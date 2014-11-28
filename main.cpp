@@ -12,6 +12,7 @@
 #include <arpa/inet.h>
 
 #include "command.h"
+#include "state.h"
 
 #include "util/socket-util.h"
 
@@ -53,7 +54,7 @@ static uint64_t incrementTransactionCount()
 }
 
 // Process internal client requests
-static void handleClientRequest(int client_fd)
+static void handleInternalClientRequest(int client_fd)
 {
   char command[COMMAND_ID_LEN];
   int bytesRead = read(client_fd, command, sizeof(command));
@@ -67,31 +68,31 @@ static void handleClientRequest(int client_fd)
   
   if (strcmp(command, PUT) == 0)
   {
-    NOT_IMPLEMENTED
+    handleInternalPutRequest(client_fd);
   }
   else if (strcmp(command, GET) == 0)
   {
-    NOT_IMPLEMENTED
+    handleInternalGetRequest(client_fd);
   }
   else if (strcmp(command, RECOVER) == 0)
   {
-    NOT_IMPLEMENTED
+    handleInternalRecoverRequest(client_fd);
   }
   else if (strcmp(command, MIGRATE_RANGE) == 0)
   {
-    NOT_IMPLEMENTED
+    handleInternalMigrateRangeRequest(client_fd);
   }
   else if (strcmp (command, UPDATE_RANGE) == 0)
   {
-    NOT_IMPLEMENTED
+    handleInternalUpdateRangeRequest(client_fd);
   }
   else if (strcmp (command, LEAVE) == 0)
   {
-    NOT_IMPLEMENTED
+    handleInternalLeaveRequest(client_fd);
   }
   else if (strcmp (command, JOIN) == 0)
   {
-    NOT_IMPLEMENTED
+    handleInternalJoinRequest(client_fd);
   }
   else
   {
@@ -101,7 +102,7 @@ static void handleClientRequest(int client_fd)
   close(client_fd);
 }
 
-static void server()
+static void internalServer()
 {
   int server_fd = createServerSocket(INTERNAL_SERVER_PORT_NO, MAX_INTERNAL_SERVER_BACKLOG);
   if (server_fd == kServerSocketFailure)
@@ -122,14 +123,14 @@ static void server()
   		continue;
   	}
 
-  	thread client_thread(handleClientRequest(client_fd));
+  	thread client_thread(handleInternalClientRequest(client_fd));
     client_thread.detach();
 	}
 
 	close(server_fd);
 }
 
-static void frontEnd()
+static void frontEndServer()
 {
   int server_fd = createServerSocket(FRONT_END_SERVER_PORT_NO, MAX_FRONT_END_SERVER_BACKLOG);
   if (server_fd == kServerSocketFailure)
@@ -164,16 +165,14 @@ static void initializeState()
     perror("Unable to gethostname for current machine. Exiting.");
     exit(1);
   }
-  node_id = getNodeId()
+  node_id = getNodeId(string(hostname));
   transaction_count = 0;
 }
 
 int main(int argc, const char *argv[])
 {
-
-
-	thread internal_comms_server_thread(server);
-  thread front_end_server_thread(frontEnd);
+	thread internal_comms_server_thread(internalServer);
+  thread front_end_server_thread(frontEndServer);
 
   internal_comms_server_thread.join();
   front_end_server_thread.join();

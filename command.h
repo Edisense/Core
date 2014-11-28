@@ -1,4 +1,3 @@
-// Definition for message passing between nodes */
 
 #ifndef COMMAND_H
 #define COMMAND_H
@@ -77,4 +76,4 @@
 #define JOIN "JOI"
 #define JOIN_HEADER_SIZE 12
 
-#endif /* COMMAND_H 
+#endif /* COMMAND_H */
