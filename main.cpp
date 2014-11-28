@@ -1,8 +1,6 @@
 
 #include <cassert>
-#include <cstdint>
 #include <cstring>
-#include <hash>
 #include <map>
 #include <mutex>
 #include <iostream>
@@ -10,6 +8,8 @@
 #include <unistd.h>
 #include <sys/socket.h>
 #include <arpa/inet.h>
+#include <edisense_types.h>
+#include <server/server-internal.h>
 
 #include "command.h"
 #include "state.h"
@@ -41,7 +41,7 @@ static mutex transaction_count_lock;
 static uint32_t getNodeId(const string &hostname)
 {
   hash<string> h;
-  return (uint_32_t) h(hostname);
+  return (uint32_t) h(hostname);
 }
 
 static uint64_t incrementTransactionCount()
@@ -110,22 +110,22 @@ static void internalServer()
     perror("Unable to start front end server. Exiting.");
     exit(1);
   }
-	
+
   struct sockaddr_in cli_addr;
   socklen_t cli_len = sizeof(cli_addr);
-  while (true) 
-  {
-  	int client_fd = accept(server_fd, (struct sockaddr *) &cli_addr, &cli_len);
-  	if (client_fd < 0)
-  	{
-  		perror("Error on accept");
-  		close(client_fd);
-  		continue;
-  	}
-
-  	thread client_thread(handleInternalClientRequest(client_fd));
-    client_thread.detach();
-	}
+//  while (true)
+//  {
+//  	int client_fd = accept(server_fd, (struct sockaddr *) &cli_addr, &cli_len);
+//  	if (client_fd < 0)
+//  	{
+//  		perror("Error on accept");
+//  		close(client_fd);
+//  		continue;
+//  	}
+//
+//  	thread client_thread(handleInternalClientRequest(client_fd));
+//    client_thread.detach();
+//	}
 
 	close(server_fd);
 }
@@ -138,10 +138,10 @@ static void frontEndServer()
     perror("Unable to start front end server. Exiting.");
     exit(1);
   }
-  
+
   struct sockaddr_in cli_addr;
   socklen_t cli_len = sizeof(cli_addr);
-  while (true) 
+  while (true)
   {
     int client_fd = accept(server_fd, (struct sockaddr *) &cli_addr, &cli_len);
     if (client_fd < 0)
