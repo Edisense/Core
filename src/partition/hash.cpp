@@ -2,7 +2,7 @@
 #include "hash.h"
 
 // source: http://www.cse.yorku.ca/~oz/hash.html
-inline unsigned int hash_string(const char *str);
+inline unsigned int hash_string(const char *str)
 {
 	unsigned int hash = 5381;
     int c;

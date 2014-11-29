@@ -20,7 +20,11 @@ set(CORE_INCLUDE include/command.h
 set(CORE_PARTITION src/partition/partition_table.h
                    src/partition/partition_table.cpp
                    src/partition/partition_db.h
-                   src/partition/partition_db.cpp)
+                   src/partition/partition_db.cpp
+                   src/partition/partition_io.h
+                   src/partition/partition_io.cpp
+                   src/partition/hash.h
+                   src/partition/hash.cpp)
 
 set(CORE_SERVER src/server/server-internal.h
                 src/server/server-internal.cpp
