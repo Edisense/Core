@@ -1,50 +1,14 @@
 
 #include <cassert>
 #include <cstdint>
+#include <climit>
 #include <fcntl.h>
 #include <unistd.h>
+#include <dirent.h>
+
+#include "partition_io.h"
 
 #include "partition_table.h"
-
-// read binary encoded partition table: PARTITION REPLICAS TABLE
-static partition_t *readPartitionTable(const char *filename, 
-	int *n_partitions, int *n_replicas)
-{
-	int fd = open(filename, 'r');
-	if (!fd) 
-		return NULL;
-	uint32_t partitions, replicas;
-	if (read(fd, &partitions, sizeof(uint32_t)) != sizeof(uint32_t)) 
-		return NULL;
-	if (read(fd, &replicas, sizeof(uint32_t)) != sizeof(uint32_t)) 
-		return NULL;
-	size_t table_size = sizeof(partition_t) * partitions * replicas;
-	partition_t *table = (partition_t *) malloc(table_size);
-	size_t bytes_read = read(fd, table, table_size);
-	if (bytes_read != table_size)
-	{
-		free(table);
-		return NULL;
-	}
-	*n_partitions = partitions;
-	*n_replicas = replicas;
-	close(fd);
-	return table;
-}
-
-static void writePartitionTable(std::string filename, partition_t *table,
-	int n_partitions, int n_replicas)
-{
-	int fd = open(filename.c_str(), 'w');
-	assert(fd != 0);
-	uint32_t buf = n_partitions;
-	assert (write(fd, &buf, sizeof(uint32_t)) == sizeof(uint32_t));
-	buf = n_replicas;
-	assert (write(fd, &buf, sizeof(uint32_t)) == sizeof(uint32_t));
-	size_t table_size = sizeof(partition_t) * n_partitions *n_replicas;
-	assert (write(fd, table, table_size) == table_size);
-	close(fd);
-}
 
 PartitionTable::PartitionTable(std::string filename)
 {
@@ -68,7 +32,7 @@ PartitionTable::~PartitionTable()
 	free(partition_to_nodes);
 }
 
-partition_t PartitionTable::getPartition(int hash)
+partition_t PartitionTable::getPartition(unsigned long hash)
 {
 	return hash % n_partitions;
 }
@@ -98,8 +62,15 @@ bool PartitionTable::updatePartitionOwner(node_t old_owner,
 		}
 	}
 	// TODO: should use different filename to stop overwriting
+	std::string tmp_file = filename + ".tmp";
 	if (success) 
-		writePartitionTable(filename, partition_to_nodes, n_partitions, n_replicas);
+	{
+		success = writePartitionTable(tmp_file.c_str(), partition_to_nodes, n_partitions, n_replicas);
+		if (success) // atomic swap partition files
+		{
+			success = renameat2(AT_FDCWD, tmp_file.c_str(), AT_FDCWD, filename.c_str(), RENAME_EXCHANGE); 
+		}
+	}
 	
 	return success;
 }

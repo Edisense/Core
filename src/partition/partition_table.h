@@ -13,7 +13,7 @@ class PartitionTable
 public:
 	PartitionTable(std::string filename);
 	~PartitionTable();
-	partition_t getPartition(int hash);
+	partition_t getPartition(unsigned long hash);
 
 	// must hold reader lock, returns array with partition owners
 	partition_t *getPartitionOwners(partition_t partition_no);

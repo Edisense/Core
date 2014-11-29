@@ -8,6 +8,7 @@
 #include <unistd.h>
 
 #include "partition/hash.h" // TODO: how to include this
+#include "partition_io.h"
 
 #include "edisense_types.h"
 
@@ -41,20 +42,6 @@ static map<string, node_t> readHostsFile(string &hostnames)
 
 	ifs.close(); 
     return host_to_id;
-}
-
-static void writePartitionTable(const char *filename, partition_t *table, // TODO: this should be pulled out
-	int n_partitions, int n_replicas)
-{
-	int fd = open(filename, "w");
-	assert(fd != 0);
-	uint32_t buf = n_partitions;
-	assert (write(fd, &buf, sizeof(uint32_t)) == sizeof(uint32_t));
-	buf = n_replicas;
-	assert (write(fd, &buf, sizeof(uint32_t)) == sizeof(uint32_t));
-	size_t table_size = sizeof(partition_t) * n_partitions *n_replicas;
-	assert (write(fd, table, table_size) == table_size);
-	close(fd);
 }
 
 int main(int argc, char *argv[])
