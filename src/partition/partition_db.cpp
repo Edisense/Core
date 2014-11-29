@@ -1,7 +1,7 @@
 
 #include <mutex>
 #include <cassert>
-#include <string>
+#include <cstring>
 #include <sys/stat.h>
 
 #include <list>
@@ -75,7 +75,7 @@ bool PartitionDB::put(device_t device_id, time_t timestamp, time_t expiration, v
 
 	std::lock_guard<std::mutex> lg(db_lock);	
 
-	sql_len = sprintf(sql, "SELECT * FROM stored_values WHERE (device_id == %d AND timestamp == %d);", device_id, timestamp);
+	sql_len = sprintf(sql, "SELECT * FROM stored_values WHERE (device_id == %d AND timestamp == %ld);", device_id, timestamp);
 	stmt = NULL;
 	result = sqlite3_prepare_v2(db, sql, sql_len, &stmt, NULL);
 	if (result != SQLITE_OK)
@@ -122,7 +122,7 @@ bool PartitionDB::put(device_t device_id, time_t timestamp, time_t expiration, v
 	sqlite3_finalize(stmt);
 
 	stmt = NULL;
-	sql_len = sprintf(sql, "INSERT INTO stored_values VALUES(%d, %d, %d, ?);", device_id, timestamp, expiration);
+	sql_len = sprintf(sql, "INSERT INTO stored_values VALUES(%d, %ld, %ld, ?);", device_id, timestamp, expiration);
 	result = sqlite3_prepare_v2(db, sql, sql_len, &stmt, NULL);
 	if (result != SQLITE_OK)
 	{
@@ -155,7 +155,7 @@ std::list<struct data> * PartitionDB::get(device_t device_id, time_t min_timesta
 	std::lock_guard<std::mutex> lg(db_lock);	
 
 	sql_len = sprintf(sql, "SELECT * FROM stored_values" \
-		"WHERE (device_id == %d AND timestamp BETWEEN %d AND %d)" \ 
+		"WHERE (device_id == %d AND timestamp BETWEEN %ld AND %ld)" \ 
 		"ORDER BY timestamp ASC;", device_id, min_timestamp, max_timestamp);
 	result = sqlite3_prepare_v2(db, sql, sql_len, &stmt, NULL);
 	if (result != SQLITE_OK)
@@ -212,7 +212,7 @@ bool PartitionDB::remove(time_t timestamp)
 	std::list<struct data> ret;
 	std::lock_guard<std::mutex> lg(db_lock);	
 
-	sql_len = sprintf(sql, "DELETE FROM stored_values WHERE (timestamp < %d);", timestamp);
+	sql_len = sprintf(sql, "DELETE FROM stored_values WHERE (timestamp < %ld);", timestamp);
 	result = sqlite3_prepare_v2(db, sql, sql_len, &stmt, NULL);
 	if (result != SQLITE_OK)
 	{
