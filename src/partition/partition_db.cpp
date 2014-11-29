@@ -1,7 +1,7 @@
 
 #include <mutex>
 #include <cassert>
-#include <cstring>
+#include <string>
 #include <sys/stat.h>
 
 #include <list>
@@ -183,7 +183,7 @@ std::list<struct data> * PartitionDB::get(device_t device_id, time_t min_timesta
 			d.timestamp = timestamp;
 			d.expiration = expiration;
 			d.datalen = data_size;
-			memcpy(&d.data, data, data_size);
+			std::memcpy(&d.data, data, data_size);
 
 			ret->push_back(d);
 		}

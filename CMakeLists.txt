@@ -7,6 +7,7 @@ set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
 
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
 
+find_package(Threads REQUIRED)
 find_package(SQLite REQUIRED)
 
 include_directories(src include)
@@ -37,5 +38,6 @@ set(SOURCE_FILES main.cpp
 
 add_executable(EdisenseCore ${SOURCE_FILES})
 
+target_link_libraries(EdisenseCore ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(EdisenseCore ${SQLITE3_LIBRARIES})
 
