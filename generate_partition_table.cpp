@@ -7,7 +7,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "hash_function.h" // TODO: need to write this to hash host names to node_t
+#include "partition/hash.h" // TODO: how to include this
+
 #include "edisense_types.h"
 
 using namespace std;
@@ -23,7 +24,7 @@ static map<string, node_t> readHostsFile(string &hostnames)
         exit(1);
     }
 
-    while(ifs)
+    while(ifs) // host file is whitespace delimited
     {
     	string host;
     	ifs >> host;
@@ -34,7 +35,7 @@ static map<string, node_t> readHostsFile(string &hostnames)
        		exit(1);
     	}
 
-    	node_t node_id = hostToNodeId(host); // TODO : this needs to be implemented with hashing of some form
+    	node_t node_id = hostToNodeId(host);
     	host_to_id[host] = node_id;
     }
 
@@ -42,7 +43,7 @@ static map<string, node_t> readHostsFile(string &hostnames)
     return host_to_id;
 }
 
-static void writePartitionTable(const char *filename, partition_t *table, 
+static void writePartitionTable(const char *filename, partition_t *table, // TODO: this should be pulled out
 	int n_partitions, int n_replicas)
 {
 	int fd = open(filename, "w");
