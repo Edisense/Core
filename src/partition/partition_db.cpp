@@ -1,11 +1,12 @@
 
 #include <mutex>
 #include <cassert>
-#include <string>
+#include <cstring>
 #include <sys/stat.h>
 
 #include <list>
 #include <unistd.h>
+#include <string>
 
 #include "partition_db.h"
 
@@ -183,7 +184,7 @@ std::list<struct data> * PartitionDB::get(device_t device_id, time_t min_timesta
 			d.timestamp = timestamp;
 			d.expiration = expiration;
 			d.datalen = data_size;
-			std::memcpy(&d.data, data, data_size);
+			memcpy(&d.data, data, data_size);
 
 			ret->push_back(d);
 		}
