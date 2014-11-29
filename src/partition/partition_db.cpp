@@ -6,24 +6,23 @@
 
 #include <list>
 #include <unistd.h>
-#include <string>
 
 #include "partition_db.h"
 
 static int createTableCallback(void *NotUsed, int argc, char **argv, char **azColName){
-  printf("Callback called: create table\n"); 
+	printf("Callback called: create table\n"); 
 	int i;
 	char const * value;
-  for(i=0; i<argc; i++) {
+	for(i=0; i<argc; i++) {
 		if (argv[i]) {
 			value = argv[i];
 		} else {
 			value = "NULL";
 		}
-    printf("%s = %s\n", azColName[i], value);
-  }
-  printf("\n");
-  return 0;
+		printf("%s = %s\n", azColName[i], value);
+	}
+	printf("\n");
+	return 0;
 }
 
 PartitionDB::PartitionDB(const std::string &filename)
@@ -31,24 +30,24 @@ PartitionDB::PartitionDB(const std::string &filename)
 	fprintf(stderr, "Open database: %s\n", filename.c_str());
 	if (sqlite3_open(filename.c_str(), &db))
 	{
-   	fprintf(stderr, "Can't open database: %s\n", sqlite3_errmsg(db));
-    exit(0);
-  }
-  fprintf(stderr, "Opened database successfully\n");
+		fprintf(stderr, sqlite3_errmsg(db));
+		throw "Can't open database!";
+	}
+	fprintf(stderr, "Opened database successfully\n");
 
-  char *sql = "CREATE TABLE IF NOT EXISTS stored_values( " \
-  	"device_id 	INT PRIMARY KEY NOT NULL," \
-  	"timestamp 	INT	NOT NULL," \
-  	"expiration INT NOT NULL," \
-  	"data	BLOB	NOT NULL );";
+	char *sql = "CREATE TABLE IF NOT EXISTS stored_values( " \
+		"device_id 	INT PRIMARY KEY NOT NULL," \
+		"timestamp 	INT	NOT NULL," \
+		"expiration INT NOT NULL," \
+		"data	BLOB	NOT NULL );";
 
 	char *errMsg = NULL;
 	if(sqlite3_exec(db, sql, createTableCallback, 0, &errMsg) != SQLITE_OK) 
 	{
-    fprintf(stderr, "SQL error: %s\n", errMsg);
-    sqlite3_free(errMsg);
-    exit(0);
-  }
+		fprintf(stderr, "SQL error: %s\n", errMsg);
+		sqlite3_free(errMsg);
+		throw "Table not found and can't create it!";
+	}
 }
 
 PartitionDB::~PartitionDB()
@@ -116,7 +115,7 @@ bool PartitionDB::put(device_t device_id, time_t timestamp, time_t expiration, v
 		} 
 		else 
 		{
- 			sqlite3_finalize(stmt);
+			sqlite3_finalize(stmt);
 			return false;
 		}
 	}
@@ -194,7 +193,7 @@ std::list<struct data> * PartitionDB::get(device_t device_id, time_t min_timesta
 		} 
 		else 
 		{
- 			sqlite3_finalize(stmt);
+			sqlite3_finalize(stmt);
 			exit(0);
 		}
 	}
@@ -261,7 +260,7 @@ std::list<device_t> * PartitionDB::getDevices(void)
 		} 
 		else 
 		{
- 			sqlite3_finalize(stmt);
+			sqlite3_finalize(stmt);
 			exit(0);
 		}
 	}
@@ -276,7 +275,7 @@ long long PartitionDB::size(void)
 	if (lstat(filename.c_str(), &sb) != 0)
 	{
 		fprintf(stderr, "failed to stat file %s\n", filename.c_str());
-		exit(0);
+		throw "can't stat db file";
 	}
 	return sb.st_size;
 }

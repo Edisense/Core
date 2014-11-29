@@ -6,6 +6,7 @@
 #include <iostream>
 #include <thread>
 #include <unistd.h>
+#include <climits>
 #include <sys/socket.h>
 #include <arpa/inet.h>
 #include <edisense_types.h>

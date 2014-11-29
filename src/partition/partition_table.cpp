@@ -1,7 +1,7 @@
 
 #include <cassert>
 #include <cstdint>
-#include <climit>
+#include <climits>
 #include <fcntl.h>
 #include <unistd.h>
 #include <dirent.h>
