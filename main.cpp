@@ -9,13 +9,17 @@
 #include <climits>
 #include <sys/socket.h>
 #include <arpa/inet.h>
-#include <edisense_types.h>
 #include <server/server-internal.h>
+#include <unistd.h>
 
 #include "command.h"
 #include "state.h"
 
 #include "util/socket-util.h"
+
+#ifndef HOST_NAME_MAX
+#define HOST_NAME_MAX 255
+#endif
 
 using namespace std;
 
