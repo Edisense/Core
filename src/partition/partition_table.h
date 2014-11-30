@@ -3,10 +3,9 @@
 
 #include <string>
 #include <list>
-#include <exception>
-#include <pthread.h>
 
-#include <edisense_types.h>
+#include "rw_lock.h"
+#include "edisense_types.h"
 
 class PartitionTable 
 {
@@ -26,15 +25,12 @@ public:
 	int getNumReplicas() {	return n_replicas;  }
 	partition_t getNextPartition(partition_t partition_no);
 	
-	void acquireRDLock();
-	void releaseRDLock();
-	void acquireWRLock();
-	void releaseWRLock();
+	// partition table lock
+	RWLock lock;
 private:
 	int n_partitions;
 	int n_replicas;
 	node_t *partition_to_nodes;
-	pthread_rwlock_t rw_lock;
 	std::string filename;
 };
 

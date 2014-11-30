@@ -12,4 +12,7 @@ typedef uint16_t device_t;
 // 16-bit range id
 typedef uint16_t partition_t;
 
+// 64-bit transaction id
+typedef uint64_t transaction_t;
+
 #endif /* EDISENSE_TYPES_H */

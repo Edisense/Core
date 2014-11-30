@@ -15,7 +15,8 @@ include_directories(${SQLITE3_INCLUDE_DIR})
 
 set(CORE_INCLUDE include/command.h
                  include/edisense_types.h
-                 include/state.h)
+                 include/state.h
+                 include/state.cpp)
 
 set(CORE_PARTITION src/partition/partition_table.h
                    src/partition/partition_table.cpp
@@ -32,7 +33,9 @@ set(CORE_SERVER src/server/server-internal.h
                 src/server/config.cpp)
 
 set(CORE_UTIL src/util/socket-util.h
-              src/util/socket-util.cpp )
+              src/util/socket-util.cpp 
+              src/util/rw_lock.h
+              src/util/rw_lock.cpp)
 
 set(SOURCE_FILES main.cpp
                  ${CORE_INCLUDE}

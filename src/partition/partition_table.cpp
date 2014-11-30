@@ -12,11 +12,6 @@
 
 PartitionTable::PartitionTable(std::string filename)
 {
-	if(pthread_rwlock_init(&rw_lock, NULL) != 0)
-	{
-		throw "failed to init rw lock";
-	}
-
 	this->filename = filename;
 
 	partition_to_nodes = readPartitionTable(filename.c_str(), &n_partitions, &n_replicas);
@@ -28,7 +23,6 @@ PartitionTable::PartitionTable(std::string filename)
 
 PartitionTable::~PartitionTable()
 {
-	pthread_rwlock_destroy(&rw_lock);
 	free(partition_to_nodes);
 }
 
@@ -88,24 +82,4 @@ partition_t PartitionTable::getNextPartition(partition_t partition_no)
 	assert(partition_no < n_partitions);
 	partition_no += 1;
 	return (partition_no >= n_partitions) ? 0 : partition_no;
-}
-
-void PartitionTable::acquireRDLock()
-{
-	assert(pthread_rwlock_rdlock(&rw_lock) == 0);
-}
-
-void PartitionTable::releaseRDLock()
-{
-	assert(pthread_rwlock_unlock(&rw_lock) == 0);
-}
-
-void PartitionTable::acquireWRLock()
-{
-	assert(pthread_rwlock_wrlock(&rw_lock) == 0);
-}
-
-void PartitionTable::releaseWRLock()
-{
-	assert(pthread_rwlock_unlock(&rw_lock) == 0);
 }
