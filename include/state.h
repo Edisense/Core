@@ -9,7 +9,7 @@
 #include "util/rw_lock.h"
 #include "edisense_types.h"
 
-enum NODE_STATE 
+enum NodeState
 { 
 	JOINING,
 	LEAVING,
@@ -17,7 +17,7 @@ enum NODE_STATE
 	RECOVERING
 };
 
-enum PARTITION_STATE
+enum PartitionState
 {
 	STABLE,
 	MIGRATING_FROM,
@@ -26,20 +26,20 @@ enum PARTITION_STATE
 
 struct partition_meta_t
 {
-	PARTITION_STATE state;
+	PartitionState state;
 	node_t other_node; // If state is MIGRATING_*
 };
 
-class NodeState 
+class NodeStateMachine
 {
 public:
 	transaction_t getTransactionID(std::string &filename);
 
 	// use writer lock to modify, reader lock to read
-	NODE_STATE state;
+	NodeState state;
 	RWLock state_lock;
 	
-	std::map<partition_t, struct partition_meta> partition_map;
+	std::map<partition_t, partition_meta_t> partition_map;
 	RWLock partition_map_lock;
 
 	std::map<node_t, std::string> cluster_members;

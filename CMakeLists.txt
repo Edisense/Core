@@ -17,7 +17,7 @@ include_directories(${SQLITE3_INCLUDE_DIR})
 set(CORE_INCLUDE include/command.h
                  ext/Comms/include/edisense_types.h
                  include/state.h
-                 include/state.cpp)
+                 src/server/state.cpp)
 
 set(CORE_PARTITION src/partition/partition_table.h
                    src/partition/partition_table.cpp
