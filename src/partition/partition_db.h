@@ -6,6 +6,7 @@
 #include <sqlite3.h> 
 
 #include <edisense_types.h>
+#include <string>
 
 #define MAX_DATA_LEN 20
 

@@ -2,19 +2,20 @@ cmake_minimum_required(VERSION 2.8.11)
 project(EdisenseCore)
 
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++11")
-# Find includes in corresponding build directories
-#set(CMAKE_INCLUDE_CURRENT_DIR ON)
 
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_SOURCE_DIR}/cmake/Modules/")
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} "${CMAKE_CURRENT_SOURCE_DIR}/cmake/Modules/")
 
 find_package(Threads REQUIRED)
 find_package(SQLite REQUIRED)
 
+add_subdirectory(ext/Comms)
+
 include_directories(src include)
+include_directories(ext/Comms/include)
 include_directories(${SQLITE3_INCLUDE_DIR})
 
 set(CORE_INCLUDE include/command.h
-                 include/edisense_types.h
+                 ext/Comms/include/edisense_types.h
                  include/state.h
                  include/state.cpp)
 
@@ -34,8 +35,8 @@ set(CORE_SERVER src/server/server-internal.h
 
 set(CORE_UTIL src/util/socket-util.h
               src/util/socket-util.cpp 
-              src/util/rw_lock.h
-              src/util/rw_lock.cpp)
+              src/util/rw_lock.h)
+#              src/util/rw_lock.cpp)
 
 set(SOURCE_FILES main.cpp
                  ${CORE_INCLUDE}

@@ -1,0 +1,3 @@
+[submodule "ext/Comms"]
+	path = ext/Comms
+	url = https://github.com/Edisense/Comms.git

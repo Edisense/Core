@@ -4,7 +4,7 @@
 #include <string>
 #include <list>
 
-#include "rw_lock.h"
+#include "util/rw_lock.h"
 #include "edisense_types.h"
 
 class PartitionTable 
