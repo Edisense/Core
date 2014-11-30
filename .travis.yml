@@ -8,5 +8,4 @@ before_install:
   - sudo apt-get install libprotobuf-dev
   - git submodule update --init --recursive
 script:
-  - cmake .
-  - make
+  - cmake --build build/
