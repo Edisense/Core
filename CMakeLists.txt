@@ -25,8 +25,7 @@ set(CORE_PARTITION src/partition/partition_table.h
                    src/partition/partition_db.cpp
                    src/partition/partition_io.h
                    src/partition/partition_io.cpp
-                   src/partition/hash.h
-                   src/partition/hash.cpp)
+                   src/partition/hash.h)
 
 set(CORE_SERVER src/server/server-internal.h
                 src/server/server-internal.cpp

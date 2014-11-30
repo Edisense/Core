@@ -9,7 +9,7 @@
 #include "util/rw_lock.h"
 #include "edisense_types.h"
 
-enum NodeState
+enum class NodeState
 { 
 	JOINING,
 	LEAVING,
@@ -17,7 +17,7 @@ enum NodeState
 	RECOVERING
 };
 
-enum PartitionState
+enum class PartitionState
 {
 	STABLE,
 	MIGRATING_FROM,

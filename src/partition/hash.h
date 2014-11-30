@@ -7,12 +7,28 @@
 
 // hash functions
 
-inline unsigned int hash_string(const char *);
+// source: http://www.cse.yorku.ca/~oz/hash.html
+static inline unsigned int hash_string(const char *str)
+{
+  unsigned int hash = 5381;
+  int c;
+  while ((c = *str++))
+    hash = ((hash << 5) + hash) + c; /* hash * 33 + c */
+  return hash;
+}
 
-inline unsigned int hash_integer(int);
+// source: java random number generator
+static inline unsigned int hash_integer(int n)
+{
+  return n * (unsigned long long)25214903917 + 11;
+}
 
-// convenience wrapper
+// Convenience wrapper
 
-inline node_t hostToNodeId(std::string&);
+static inline node_t hostToNodeId(std::string &host)
+{
+  return (node_t) hash_string(host.c_str());
+}
+
 
 #endif /* HASH_FUNCTION_H */

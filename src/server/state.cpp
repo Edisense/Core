@@ -13,7 +13,7 @@ using namespace std;
 transaction_t NodeStateMachine::getTransactionID(string &filename)
 {
 	transaction_t ret;
-	lock_guard(this->counter_lock);
+	lock_guard<recursive_mutex>(this->counter_lock);
 	ret = counter++;
 	if (ret % counter_epoch == 0)
 	{
@@ -30,16 +30,16 @@ void NodeStateMachine::saveNodeState(string &filename)
 
   	switch (state)
   	{
-  		case STABLE:
+  		case NodeState::STABLE:
   			ofs << "STABLE";
   			break;
-  		case JOINING:
+  		case NodeState::JOINING:
   			ofs << "JOINING";
   			break;
-		case LEAVING:
+		case NodeState::LEAVING:
 			ofs << "LEAVING";
   			break;
-		case RECOVERING:
+		case NodeState::RECOVERING:
 			ofs << "RECOVERING";
   			break;
   	}
@@ -61,19 +61,19 @@ void NodeStateMachine::loadNodeState(string &filename)
 	ifs >> s;
 	if (s == "STABLE")
 	{
-		state = STABLE;
+		state = NodeState::STABLE;
 	}
 	else if (s == "JOINING")
 	{
-		state = JOINING;
+		state = NodeState::JOINING;
 	}
 	else if (s == "LEAVING")
 	{
-		state = LEAVING;
+		state = NodeState::LEAVING;
 	}
 	else if (s == "RECOVERING")
 	{
-		state = RECOVERING;
+		state = NodeState::RECOVERING;
 	}
 	else
 	{
