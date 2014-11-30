@@ -7,5 +7,6 @@ before_install:
   - sudo apt-get install libzmq3-dev
   - sudo apt-get install libprotobuf-dev
   - git submodule update --init --recursive
+  - mkdir build
 script:
   - cmake --build build/
