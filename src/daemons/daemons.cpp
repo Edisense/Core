@@ -7,6 +7,8 @@
 #include <sys/socket.h>
 #include <iostream>
 #include <future>
+#include <cstdlib>
+#include <iterator>
 
 #include "include/global.h"
 
@@ -35,16 +37,22 @@ void LoadBalanceDaemon(unsigned int freq)
 
 		}
 
-		// TODO finish implementation (add eviction algorithm)	
+		g_current_node_state.partition_map_lock.acquireWRLock();
 
-		g_current_node_state.partition_map_lock.acquireRDLock();
+		int random_elem = rand() % partition_map.size();
+		std::iterator it = partition_map.begin();
+		std::advance(it, random_elem);
+		partition_t victim = it->first;
+		PartitionMetadata pm = it->second;
+		if (pm.state != stable)
+		{
+			g_current_node_state.partition_map_lock.releaseWRLock();
+			continue;
+		}
 
-		partition_t victim;
-		SendCanReceive
+		// finish implementing eviction
 
-
-
-		g_current_node_state.partition_map_lock.releaseRDLock();
+		g_current_node_state.partition_map_lock.releaseWRLock();
 	}
 }
 

@@ -139,7 +139,7 @@ bool ReceiveDBFile(int sockfd)
 
 	partition_t partition_id = (partition_t) partition_id_long;
 	std::string partition_filename = GetPartitionDBFilename(partition_id);
-	g_current_node_state.partition_map_lock.acquireWRLock();
+	g_current_node_state.partition_map_lock.acquireWRLock(); // 1
 	assert(g_current_node_state.partition_map.find(partition_id) 
 		!= g_current_node_state.partition_map.end());
 	
@@ -152,7 +152,7 @@ bool ReceiveDBFile(int sockfd)
 		g_current_node_state.partition_map[partition_id] = pm;
 		g_current_node_state.savePartitionState[g_owned_partition_state_filename];
 	}
-	g_current_node_state.partition_map_lock.releaseWRLock();
+	g_current_node_state.partition_map_lock.releaseWRLock(); // 1
 
 	return true;
 }

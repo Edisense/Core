@@ -2,7 +2,8 @@
 #include <iostream>
 #include <fstream>
 
-#include "partition/hash.h"
+#include "src/partition/partition_db.h"
+#include "src/partition/hash.h"
 
 #include "state.h"
 
@@ -134,21 +135,25 @@ void NodeStateMachine::loadPartitionState(string &filename)
 		if (state == "DONATING")
 		{
 			pm.state = PartitionState::DONATING;
+			pm.db = NULL;
 			ifs >> pm.other_node;
 		} 
 		else if (state == "RECEIVING")
 		{
 			pm.state = PartitionState::RECEIVING;
+			pm.db = NULL;
 			ifs >> pm.other_node;
 		}
 		else if (state == "RECEIVED")
 		{
 			pm.state = PartitionState::RECEIVED;
+			pm.db = new PartitionDB(GetPartitionDBFilename(partition_id));
 			ifs >> pm.other_node;
 		}
 		else 
 		{
 			pm.state = PartitionState::STABLE;
+			pm.db = new PartitionDB(GetPartitionDBFilename(partition_id));
 		}
 
 		if (tmp_map.find(partition_id) != tmp_map.end())

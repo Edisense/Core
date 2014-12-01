@@ -11,7 +11,7 @@
 // Standardize the partition filenames
 std::string GetPartitionDBFilename(partition_t p)
 {
-	return std::to_string(p) + ".db";
+	return g_db_files_dirname + "/" std::to_string(p) + ".db";
 }
 
 class PartitionDB
