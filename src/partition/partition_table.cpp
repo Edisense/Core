@@ -70,11 +70,16 @@ bool PartitionTable::updatePartitionOwner(node_t old_owner,
 	return success;
 }
 
-partition_t *PartitionTable::getPartitionOwners(partition_t partition_no)
+std::list<node_t> PartitionTable::getPartitionOwners(partition_t partition_no)
 {
 	assert(partition_no < n_partitions);
+	std::list<node_t> ret;
 	int base_index = partition_no * n_replicas;
-	return &partition_to_nodes[base_index];
+	for (int i = 0; i < n_replicas; i++)
+	{
+		ret.push_back(partition_to_nodes[base_index + i]);
+	}
+	return ret;
 }
 
 partition_t PartitionTable::getNextPartition(partition_t partition_no)

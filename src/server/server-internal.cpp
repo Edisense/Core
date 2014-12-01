@@ -4,7 +4,7 @@
 #include "server-internal.h"
 #include "hash.h"
 
-PutResult handlePutRequest(MessageId mesg_id, device_t device_id, 
+PutResult HandlePutRequest(MessageId mesg_id, device_t device_id, 
 	time_t timestamp, time_t expiration, void *data, size_t data_len)
 {
 	PutResult ret;
@@ -21,6 +21,7 @@ PutResult handlePutRequest(MessageId mesg_id, device_t device_id,
 	{
 		cout << "received put on unowned range!" << endl;
 		ret.success = false;
+		ret.moved = false;
 		g_current_node_state.partition_map_lock.releaseRDLock();
 		return ret;
 	}
@@ -44,7 +45,7 @@ PutResult handlePutRequest(MessageId mesg_id, device_t device_id,
 	return ret;
 }
 
-GetResult handleGetRequest(MessageId mesg_id, 
+GetResult HandleGetRequest(MessageId mesg_id, 
 	device_t deviceId, time_t lower_range, time_t upper_range)
 {
 	GetResult = ret;
@@ -59,7 +60,7 @@ GetResult handleGetRequest(MessageId mesg_id,
 	catch (const std::out_of_range &e) // this range is not owned by current node!
 	{
 		cout << "received get on unowned range!" << endl;
-		ret.success = false;
+		ret.moved = false;
 		g_current_node_state.partition_map_lock.releaseRDLock();
 		return ret;
 	}
@@ -73,7 +74,6 @@ GetResult handleGetRequest(MessageId mesg_id,
 		ret.moved = false;
 		break;
 	case MIGRATING_FROM:
-		ret.success = false;
 		ret.moved = true;
 		ret.moved_to = partition_state.other_node;
 		break;
@@ -83,7 +83,7 @@ GetResult handleGetRequest(MessageId mesg_id,
 	return ret;
 }
 
-bool handleUpdatePartitionOwner(MessageId mesg_id, node_t new_owner, 
+bool HandleUpdatePartitionOwner(MessageId mesg_id, node_t new_owner, 
 	partition_t partition_id)
 {
 	bool success;
@@ -93,7 +93,7 @@ bool handleUpdatePartitionOwner(MessageId mesg_id, node_t new_owner,
 	return success;
 }
 
-bool handleJoinRequest(MessageId mesg_id, std::string &new_node);
+bool HandleJoinRequest(MessageId mesg_id, std::string &new_node);
 {
 	node_t node_id = hostToNodeId(new_node);
 	assert (node_id == mesg_id.node_id);
@@ -116,7 +116,7 @@ bool handleJoinRequest(MessageId mesg_id, std::string &new_node);
 	return true;
 }
 
-bool handleLeaveRequest(MessageId mesg_id)
+bool HandleLeaveRequest(MessageId mesg_id)
 {
 	g_current_node_state.cluster_members_lock.acquireWRLock();
 	// handle already left case
