@@ -25,6 +25,17 @@ typedef struct GetResult
 GetResult handleGetRequest(MessageId mesg_id, 
 	device_t deviceId, time_t lower_range, time_t upper_range);
 
+typedef struct CanRecvResult 
+{
+    bool can_recv;
+    float util;
+} CanRecvResult;
+
+CanRecvResult handleCanRecv(MessageId mesg_id, partition_t partition_id);
+
+bool handleUpdatePartitionOwner(MessageId mesg_id, node_t new_owner, 
+	partition_t partition_id);
+
 bool handleJoinRequest(MessageId mesg_id, std::string &new_node);
 
 bool handleLeaveRequest(MessageId mesg_id);

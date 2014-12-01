@@ -12,12 +12,14 @@ PutResult handlePutRequest(MessageId mesg_id, device_t device_id,
 
 	PartitionMetadata partition_state;
 	g_current_node_state.partition_map_lock.acquireRDLock();
+
 	try
 	{
 		partition_state = g_current_node_state.partition_map.at(partition_to_put_into);
 	}
-	catch (const std::out_of_range &e) 
+	catch (const std::out_of_range &e) // this range is not owned by current node!
 	{
+		cout << "received put on unowned range!" << endl;
 		ret.success = false;
 		g_current_node_state.partition_map_lock.releaseRDLock();
 		return ret;
@@ -38,6 +40,7 @@ PutResult handlePutRequest(MessageId mesg_id, device_t device_id,
 		break;
 	}
 	g_current_node_state.partition_map_lock.releaseRDLock();
+
 	return ret;
 }
 
@@ -53,8 +56,9 @@ GetResult handleGetRequest(MessageId mesg_id,
 	{
 		partition_state = g_current_node_state.partition_map.at(partition_to_get_from);
 	}
-	catch (const std::out_of_range &e) 
+	catch (const std::out_of_range &e) // this range is not owned by current node!
 	{
+		cout << "received get on unowned range!" << endl;
 		ret.success = false;
 		g_current_node_state.partition_map_lock.releaseRDLock();
 		return ret;
@@ -74,35 +78,62 @@ GetResult handleGetRequest(MessageId mesg_id,
 		ret.moved_to = partition_state.other_node;
 		break;
 	}
-
 	g_current_node_state.partition_map_lock.releaseRDLock();
+
 	return ret;
+}
+
+bool handleUpdatePartitionOwner(MessageId mesg_id, node_t new_owner, 
+	partition_t partition_id)
+{
+	bool success;
+	g_cached_partition_table.lock.acquireWRLock();
+	success = handleUpdatePartitionOwner(mesg_id.node_id, new_owner, partition_id);
+	g_cached_partition_table.lock.releaseRDLock();
+	return success;
 }
 
 bool handleJoinRequest(MessageId mesg_id, std::string &new_node);
 {
+	node_t node_id = hostToNodeId(new_node);
+	assert (node_id == mesg_id.node_id);
+
 	g_current_node_state.cluster_members_lock.acquireWRLock();
 	// handle already joined case
-	if (g_current_node_state.cluster_members.find(mesg_id.node_id) 
-		== g_current_node_state.cluster_members.end();
+	if (g_current_node_state.cluster_members.find(node_id) 
+		== g_current_node_state.cluster_members.end())
 	{
-
+		cout << new_node << " " << node_id << " already joined!" << endl;
 	}
-
+	else // allow new node to join the cluster
+	{
+		g_current_node_state.cluster_members[node_id] = new_node;
+		g_current_node_state.saveClusterMemberList(g_cluster_member_list_filename);
+		cout << new_node << " " << node_id << " added to cluster" << endl;
+	}
 	g_current_node_state.cluster_members_lock.releaseWRLock();
+
 	return true;
 }
 
 bool handleLeaveRequest(MessageId mesg_id)
 {
-	g_current_node_state.cluster_members_lock.acquireWRLock();	
+	g_current_node_state.cluster_members_lock.acquireWRLock();
+	// handle already left case
 	if (g_current_node_state.cluster_members.find(mesg_id.node_id) 
 		== g_current_node_state.cluster_members.end();
 	{
-
+		cout << mesg_id.node_id << " already left!" << endl;
 	}
-
+	else // remove the node from the cluster
+	{
+		g_current_node_state.cluster_members.erase(mesg_id.node_id);
+		g_current_node_state.saveClusterMemberList(g_cluster_member_list_filename);
+		cout << mesg_id.node_id << " left cluster!" << endl;
+	}
 	g_current_node_state.cluster_members_lock.releaseWRLock();
+
+	return true;
 }
 
 
