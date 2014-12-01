@@ -3,7 +3,7 @@
 
 #include "server/server_internal.h"
 
-#include "ble-client-internal.h"
+#include "ble_client_internal.h"
 
 static const int kPutRequestTimeOut = 5;
 

@@ -1,8 +1,9 @@
 
 #include "state.h"
 #include "partition_db.h"
-#include "server-internal.h"
 #include "hash.h"
+
+#include "server_internal.h"
 
 PutResult HandlePutRequest(MessageId mesg_id, device_t device_id, 
 	time_t timestamp, time_t expiration, void *data, size_t data_len)
