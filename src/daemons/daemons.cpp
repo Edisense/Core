@@ -7,34 +7,13 @@
 
 #include "include/global.h"
 
+#include "src/util/utilization.h"
 #include "src/ble/ble_client_internal.h"
 
 #include "daemons.h"
 
 // minimum load before load balancing
-static const float kLoadBalanceThreshold = 0.7;
-
-static float ComputeNodeUtilization()
-{
-	DIR *d = opendir(g_db_files_dirname);
-	if (!d) 
-	{
-		throw "error openning db shards directory";
-	}
-
-	size_t used = 0;
-	struct dirent *de;
-	for (de = readdir(d); de != NULL; de = readdir(d))
-	{
-		struct stat s;
-		if (lstat(de->d_name, &s) == 0)
-		{
-			used += s.st_size;
-		}
-	}
-	closedir(d);
-	return used / (float) g_local_disk_limit_in_bytes;
-}
+static const float kLoadBalanceThreshold = 0.8;
 
 void LoadBalanceDaemon(unsigned int freq)
 {
@@ -43,14 +22,23 @@ void LoadBalanceDaemon(unsigned int freq)
 	{
 		sleep(freq);
 		cout << "waking up to do load balancing" << endl;
-		float current_utilization = ComputeNodeUtilization();
+		float current_utilization = ComputeNodeUtilization() / (float) g_local_disk_limit_in_bytes;
 		if (current_utilization < kLoadBalanceThreshold)
 		{
 			cout << "not enough load to balance, going back to sleep" << endl;
 			continue;
 
 		}
+
 		// TODO finish implementation (add eviction algorithm)	
+
+		g_current_node_state.partition_map_lock.acquireRDLock();
+
+
+
+
+
+		g_current_node_state.partition_map_lock.releaseRDLock();
 	}
 }
 
@@ -75,11 +63,16 @@ void GarbageCollectDaemon(unsigned int freq)
 		time_t gc_before_time -= kMinimumGCDelay;
 
 		g_current_node_state.partition_map_lock.acquireRDLock();
-		for (auto kv : g_current_node_state.partition_map)
+		for (auto &kv : g_current_node_state.partition_map)
 		{
 			PartitionMetadata pm = kv.second;
 			pm.db->remove(gc_before_time);
 		}
 		g_current_node_state.partition_map_lock.releaseRDLock();
 	}
+}
+
+void RetryPutDaemon(unsigned int freq)
+{
+	
 }

@@ -55,7 +55,7 @@ bool PartitionTable::updatePartitionOwner(node_t old_owner,
 			success = true;
 		}
 	}
-	// TODO: should use different filename to stop overwriting
+
 	std::string tmp_file = filename + ".tmp";
 	if (success) 
 	{
@@ -70,16 +70,12 @@ bool PartitionTable::updatePartitionOwner(node_t old_owner,
 	return success;
 }
 
-std::list<node_t> PartitionTable::getPartitionOwners(partition_t partition_no)
+partition_t *PartitionTable::getPartitionOwners(partition_t partition_no)
 {
 	assert(partition_no < n_partitions);
 	std::list<node_t> ret;
 	int base_index = partition_no * n_replicas;
-	for (int i = 0; i < n_replicas; i++)
-	{
-		ret.push_back(partition_to_nodes[base_index + i]);
-	}
-	return ret;
+	return &partition_table[base_index];
 }
 
 partition_t PartitionTable::getNextPartition(partition_t partition_no)

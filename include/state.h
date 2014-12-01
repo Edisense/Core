@@ -20,8 +20,9 @@ enum class NodeState
 enum class PartitionState
 {
 	STABLE,
-	MIGRATING_FROM,
-	MIGRATING_TO
+	RECEIVED,
+	RECEIVING,
+	DONATING
 };
 
 typedef struct PartitionMetadata

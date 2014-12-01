@@ -15,7 +15,7 @@ public:
 	partition_t getPartition(unsigned long hash);
 
 	// must hold reader lock, returns array with partition owners
-	std::list<node_t> getPartitionOwners(partition_t partition_no);
+	partition_t *getPartitionOwners(partition_t partition_no);
 
 	// must hold writer lock
 	bool updatePartitionOwner(node_t old_owner, 
@@ -24,6 +24,7 @@ public:
 	int getNumPartitions() {  return n_partitions;	}
 	int getNumReplicas() {	return n_replicas;  }
 	partition_t getNextPartition(partition_t partition_no);
+	partition_t getPartitionTable() { return partition_to_nodes; }
 	
 	// partition table lock
 	RWLock lock;

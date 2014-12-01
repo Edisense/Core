@@ -36,7 +36,8 @@ PartitionDB::PartitionDB(const std::string &filename)
 	fprintf(stderr, "Opened database successfully\n");
 
 	char *sql = "CREATE TABLE IF NOT EXISTS stored_values( " \
-		"device_id 	INT PRIMARY KEY NOT NULL," \
+		"row_id INT PRIMARY KEY" \
+		"device_id 	INT NOT NULL," \
 		"timestamp 	INT	NOT NULL," \
 		"expiration INT NOT NULL," \
 		"data	BLOB	NOT NULL );";
@@ -92,14 +93,14 @@ bool PartitionDB::put(device_t device_id, time_t timestamp, time_t expiration, v
 		}
 		else if (result == SQLITE_ROW)
 		{
-			time_t row_expiration = sqlite3_column_int(stmt, 2);
-			size_t row_data_size = sqlite3_column_bytes(stmt, 3);
+			time_t row_expiration = sqlite3_column_int(stmt, 3);
+			size_t row_data_size = sqlite3_column_bytes(stmt, 4);
 			if (row_data_size != datalen)
 			{
 				sqlite3_finalize(stmt);
 				return false;
 			}
-			void const *row_data = sqlite3_column_blob(stmt, 3);
+			void const *row_data = sqlite3_column_blob(stmt, 4);
 			assert(row_data);
 			if (!compareBuffer)
 			{
@@ -122,7 +123,7 @@ bool PartitionDB::put(device_t device_id, time_t timestamp, time_t expiration, v
 	sqlite3_finalize(stmt);
 
 	stmt = NULL;
-	sql_len = sprintf(sql, "INSERT INTO stored_values VALUES(%d, %ld, %ld, ?);", device_id, timestamp, expiration);
+	sql_len = sprintf(sql, "INSERT INTO stored_values VALUES(NULL, %d, %ld, %ld, ?);", device_id, timestamp, expiration);
 	result = sqlite3_prepare_v2(db, sql, sql_len, &stmt, NULL);
 	if (result != SQLITE_OK)
 	{
@@ -173,11 +174,11 @@ std::list<struct data> * PartitionDB::get(device_t device_id, time_t min_timesta
 		}
 		else if (result == SQLITE_ROW)
 		{
-			time_t timestamp = sqlite3_column_int(stmt, 1);
-			time_t expiration = sqlite3_column_int(stmt, 2);
-			size_t data_size = sqlite3_column_bytes(stmt, 3);
+			time_t timestamp = sqlite3_column_int(stmt, 2);
+			time_t expiration = sqlite3_column_int(stmt, 3);
+			size_t data_size = sqlite3_column_bytes(stmt, 4);
 			assert(data_size < kMaxDataLen);
-			void const *data = sqlite3_column_blob(stmt, 3);
+			void const *data = sqlite3_column_blob(stmt, 4);
 
 			struct data d;
 			d.timestamp = timestamp;
@@ -251,7 +252,7 @@ std::list<device_t> * PartitionDB::getDevices(void)
 		}
 		else if (result == SQLITE_ROW)
 		{
-			device_t d = sqlite3_column_int(stmt, 0);
+			device_t d = sqlite3_column_int(stmt, 1);
 			ret->push_back(d);
 		}
 		else if (result == SQLITE_BUSY)

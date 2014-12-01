@@ -96,11 +96,11 @@ void NodeStateMachine::savePartitionState(string &filename)
   		PartitionMetadata pm = kv.second;
   		switch (pm.state)
   		{
- 	 		case PartitionState::MIGRATING_FROM:
- 	 			ofs << "FROM\t" << kv.first << "\t" << pm.other_node;
+ 	 		case PartitionState::DONATING:
+ 	 			ofs << "DONATING\t" << kv.first << "\t" << pm.other_node;
  	 			break;
- 	 		case PartitionState::MIGRATING_TO:
- 	 			ofs << "TO\t" << kv.first << "\t" << pm.other_node;
+ 	 		case PartitionState::RECEIVING:
+ 	 			ofs << "RECEIVING\t" << kv.first << "\t" << pm.other_node;
  	 			break;
  	 		case PartitionState::STABLE:
  	 		 	ofs << "STABLE\t" << kv.first;
@@ -128,14 +128,14 @@ void NodeStateMachine::loadPartitionState(string &filename)
 		
 		PartitionMetadata pm;
 		
-		if (state == "FROM")
+		if (state == "DONATING")
 		{
-			pm.state = PartitionState::MIGRATING_FROM;
+			pm.state = PartitionState::DONATING;
 			ifs >> pm.other_node;
 		} 
-		else if (state == "TO")
+		else if (state == "RECEIVING")
 		{
-			pm.state = PartitionState::MIGRATING_TO;
+			pm.state = PartitionState::RECEIVING;
 			ifs >> pm.other_node;
 		}
 		else 

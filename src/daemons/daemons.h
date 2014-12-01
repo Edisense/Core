@@ -7,4 +7,7 @@ void LoadBalanceDaemon(unsigned int freq);
 // Background thread for garbage collecting data
 void GarbageCollectDaemon(unsigned int freq);
 
+// Background thread for retrying failed puts
+void RetryPutDaemon(unsigned int freq);
+
 #endif /* DAEMONS_H */
