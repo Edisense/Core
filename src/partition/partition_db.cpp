@@ -195,7 +195,7 @@ std::list<struct data> * PartitionDB::get(device_t device_id, time_t min_timesta
 		else 
 		{
 			sqlite3_finalize(stmt);
-			exit(0);
+			throw "sqlite db error";
 		}
 	}
 	sqlite3_finalize(stmt);
@@ -262,7 +262,7 @@ std::list<device_t> * PartitionDB::getDevices(void)
 		else 
 		{
 			sqlite3_finalize(stmt);
-			exit(0);
+			throw "sqlite db error";
 		}
 	}
 	sqlite3_finalize(stmt);
