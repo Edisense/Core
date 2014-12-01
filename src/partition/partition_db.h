@@ -5,7 +5,7 @@
 #include <mutex>
 #include <sqlite3.h> 
 
-#include <edisense_types.h>
+#include <edisense_types.h> // definition of kMaxDataLen
 #include <string>
 
 class PartitionDB

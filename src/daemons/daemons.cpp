@@ -1,5 +1,8 @@
 
 #include <unistd.h>
+#include <stdio.h>
+#include <dirent.h>
+#include <sys/stat.h>
 #include <iostream>
 
 #include "include/global.h"
@@ -10,6 +13,28 @@
 
 // minimum load before load balancing
 static const float kLoadBalanceThreshold = 0.7;
+
+static float ComputeNodeUtilization()
+{
+	DIR *d = opendir(g_db_files_dirname);
+	if (!d) 
+	{
+		throw "error openning db shards directory";
+	}
+
+	size_t used = 0;
+	struct dirent *de;
+	for (de = readdir(d); de != NULL; de = readdir(d))
+	{
+		struct stat s;
+		if (lstat(de->d_name, &s) == 0)
+		{
+			used += s.st_size;
+		}
+	}
+	closedir(d);
+	return used / (float) g_local_disk_limit_in_bytes;
+}
 
 void LoadBalanceDaemon(unsigned int freq)
 {
@@ -23,8 +48,9 @@ void LoadBalanceDaemon(unsigned int freq)
 		{
 			cout << "not enough load to balance, going back to sleep" << endl;
 			continue;
+
 		}
-		// TODO finish implementation
+		// TODO finish implementation (add eviction algorithm)	
 	}
 }
 
