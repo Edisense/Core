@@ -8,16 +8,6 @@
 #include <edisense_types.h>
 #include <string>
 
-#define MAX_DATA_LEN 20
-
-struct data
-{
-	time_t timestamp;
-	time_t expiration;
-	char data[MAX_DATA_LEN];
-	size_t datalen;
-};
-
 class PartitionDB
 {
 public:

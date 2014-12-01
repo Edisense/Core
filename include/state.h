@@ -24,11 +24,12 @@ enum class PartitionState
 	MIGRATING_TO
 };
 
-struct partition_meta_t
+typedef struct PartitionMetadata
 {
+	PartitionDB *db;
 	PartitionState state;
 	node_t other_node; // If state is MIGRATING_*
-};
+} PartitionMetadata;
 
 class NodeStateMachine
 {
@@ -39,7 +40,7 @@ public:
 	NodeState state;
 	RWLock state_lock;
 	
-	std::map<partition_t, partition_meta_t> partition_map;
+	std::map<partition_t, PartitionMetadata> partition_map;
 	RWLock partition_map_lock;
 
 	std::map<node_t, std::string> cluster_members;

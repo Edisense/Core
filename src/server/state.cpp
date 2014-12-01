@@ -6,7 +6,7 @@
 
 #include "state.h"
 
-static const int counter_epoch = 10000;
+static const int kCounterEpoch = 10000;
 
 using namespace std;
 
@@ -15,7 +15,7 @@ transaction_t NodeStateMachine::getTransactionID(string &filename)
 	transaction_t ret;
 	lock_guard<recursive_mutex>(this->counter_lock);
 	ret = counter++;
-	if (ret % counter_epoch == 0)
+	if (ret % kCounterEpoch == 0)
 	{
 		saveNodeState(filename);
 	}
@@ -26,7 +26,7 @@ void NodeStateMachine::saveNodeState(string &filename)
 {
 	string tmp_file = filename + ".tmp";
 	ofstream ofs;
-  	ofs.open(tmp_file);
+  	ofs.open(tmpFile);
 
   	switch (state)
   	{
@@ -93,7 +93,7 @@ void NodeStateMachine::savePartitionState(string &filename)
   	ofs.open(tmp_file);
   	for (auto kv : partition_map)
   	{
-  		struct partition_meta_t pm = kv.second;
+  		PartitionMetadata pm = kv.second;
   		switch (pm.state)
   		{
  	 		case PartitionState::MIGRATING_FROM:
@@ -117,7 +117,7 @@ void NodeStateMachine::savePartitionState(string &filename)
 
 void NodeStateMachine::loadPartitionState(string &filename)
 {
-	map<partition_t, struct partition_meta_t> tmp_map;
+	std::map<partition_t, PartitionMetadata> tmp_map;
 	ifstream ifs(filename);
 	while (ifs)
 	{
@@ -126,7 +126,7 @@ void NodeStateMachine::loadPartitionState(string &filename)
 		partition_t partition_id;
 		ifs >> partition_id;
 		
-		struct partition_meta_t pm;
+		PartitionMetadata pm;
 		
 		if (state == "FROM")
 		{
@@ -171,10 +171,10 @@ void NodeStateMachine::saveClusterMemberList(string &filename)
 void NodeStateMachine::loadClusterMemberList(string &filename)
 {
 	ifstream ifs(filename);
-	map<node_t, string> node_map;
+	std::map<node_t, string> node_map;
 	while (ifs)
 	{
-		string hostname;
+		std::string hostname;
 		ifs >> hostname;
 		node_t node_id = hostToNodeId(hostname);
 		if (node_map.find(node_id) != node_map.end())

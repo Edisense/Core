@@ -1,18 +1,32 @@
-#ifndef SERVER_INTERNAL_H
-#define SERVER_INTERNAL_H
+#ifndef SERVER_IMPL_H
+#define SERVER_IMPL_H
 
-void handleInternalPutRequest(int client_fd);
+#include <list>
 
-void handleInternalGetRequest(int client_fd);
+#include "edisense-types.h"
 
-void handleInternalRecoverRequest(int client_fd);
+typedef struct PutResult
+{
+	bool success;
+	bool moved;
+	node_t moved_to;
+} PutResult;
 
-void handleInternalMigrateRangeRequest(int client_fd);
+PutResult handlePutRequest(MessageId mesg_id, device_t device_id, 
+	time_t timestamp, time_t expiration, void *data, size_t data_len);
 
-void handleInternalUpdateRangeRequest(int client_fd);
+typedef struct GetResult
+{
+	std::list<struct data> values; 
+	bool moved;
+	node_t moved_to;
+} GetResult;
 
-void handleInternalLeaveRequest(int client_fd);
+GetResult handleGetRequest(MessageId mesg_id, 
+	device_t deviceId, time_t lower_range, time_t upper_range);
 
-void handleInternalJoinRequest(int client_fd);
+bool handleJoinRequest(MessageId mesg_id, std::string &new_node);
 
-#endif /* SERVER_INTERNAL_H */
+bool handleLeaveRequest(MessageId mesg_id);
+
+#endif /* SERVER_IMPL_H */

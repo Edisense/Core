@@ -66,7 +66,7 @@ static bool compareBuffer(char *buf1, char *buf2, size_t len)
 
 bool PartitionDB::put(device_t device_id, time_t timestamp, time_t expiration, void *data, size_t datalen)
 {
-	assert(datalen < MAX_DATA_LEN);
+	assert(datalen < kMaxDataLen);
 
 	int result;
 	sqlite3_stmt *stmt;
@@ -176,7 +176,7 @@ std::list<struct data> * PartitionDB::get(device_t device_id, time_t min_timesta
 			time_t timestamp = sqlite3_column_int(stmt, 1);
 			time_t expiration = sqlite3_column_int(stmt, 2);
 			size_t data_size = sqlite3_column_bytes(stmt, 3);
-			assert(data_size < MAX_DATA_LEN);
+			assert(data_size < kMaxDataLen);
 			void const *data = sqlite3_column_blob(stmt, 3);
 
 			struct data d;
