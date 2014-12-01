@@ -8,6 +8,12 @@
 #include <edisense_types.h> // definition of kMaxDataLen
 #include <string>
 
+// Standardize the partition filenames
+std::string GetPartitionDBFilename(partition_t p)
+{
+	return std::to_string(p) + ".db";
+}
+
 class PartitionDB
 {
 public:

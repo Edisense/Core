@@ -61,8 +61,7 @@ bool PartitionTable::updatePartitionOwner(node_t old_owner,
 	{
 		success = writePartitionTable(tmp_file.c_str(), partition_to_nodes, n_partitions, n_replicas);
 		if (success) // atomic swap partition files
-		{
-			//renameat2(AT_FDCWD, tmp_file.c_str(), AT_FDCWD, filename.c_str(), RENAME_EXCHANGE); 
+		{ 
 			success = (rename(tmp_file.c_str(), filename.c_str()) == 0);
 		}
 	}

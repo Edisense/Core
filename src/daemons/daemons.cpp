@@ -3,6 +3,8 @@
 #include <stdio.h>
 #include <dirent.h>
 #include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 #include <iostream>
 #include <future>
 
@@ -10,6 +12,8 @@
 
 #include "src/util/utilization.h"
 #include "src/ble/ble_client_internal.h"
+
+#include "db_file_transfer.h"
 
 #include "daemons.h"
 
@@ -76,10 +80,31 @@ void GarbageCollectDaemon(unsigned int freq)
 
 void RetryPutDaemon(unsigned int freq)
 {
-
+	// TODO not implemented
 }
 
+static const int kDBTransferServerBacklog = 5;
+static const unsigned short kDBTransferServerPortNo = 4000;
 void DBTransferServerDaemon()
 {
+	int server_fd = createServerSocket(kDBTransferServerPortNo, kDBTransferServerBacklog);
+  	if (server_fd == kServerSocketFailure)
+  	{
+    	throw "Unable to start db transfer server.";
+  	}
 
+  	struct sockaddr_in cli_addr;
+  	socklen_t cli_len = sizeof(cli_addr);
+	while (true)
+	{
+	  	int client_fd = accept(server_fd, (struct sockaddr *) &cli_addr, &cli_len);
+	  	if (client_fd < 0)
+	  	{
+	  		perror("Error on accept");
+	  		close(client_fd);
+	  		continue;
+	  	}
+
+	  	ReceiveDBFile(client_fd);
+	}
 }

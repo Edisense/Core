@@ -102,6 +102,9 @@ void NodeStateMachine::savePartitionState(string &filename)
  	 		case PartitionState::RECEIVING:
  	 			ofs << "RECEIVING\t" << kv.first << "\t" << pm.other_node;
  	 			break;
+ 	 		case PartitionState::RECEIVED:
+ 	 		 	ofs << "RECEIVED\t" << kv.first << "\t" << pm.other_node;
+ 	 			break;
  	 		case PartitionState::STABLE:
  	 		 	ofs << "STABLE\t" << kv.first;
  	 			break;
@@ -136,6 +139,11 @@ void NodeStateMachine::loadPartitionState(string &filename)
 		else if (state == "RECEIVING")
 		{
 			pm.state = PartitionState::RECEIVING;
+			ifs >> pm.other_node;
+		}
+		else if (state == "RECEIVED")
+		{
+			pm.state = PartitionState::RECEIVED;
 			ifs >> pm.other_node;
 		}
 		else 

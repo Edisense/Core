@@ -61,7 +61,7 @@ typedef struct GetResult
 {
 	bool success;
 	ErrorType error;
-	std::list<struct data> values; 
+	std::list<struct data> *values; 
 	node_t moved_to;
 } GetResult;
 
