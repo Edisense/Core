@@ -22,6 +22,7 @@ bool Put(device_t device_id, time_t timestamp, time_t expiration, void *data, si
 	std::list<PutResult> results = WaitForPutResult(tid, kPutRequestTimeOut);
 
 	bool success = true;
+	success &= results.size() == num_replicas;
 	for (PutResult pr : results)
 	{
 		success &= pr.success 
