@@ -40,7 +40,7 @@ PutResult HandlePutRequest(MessageId mesg_id, device_t device_id,
 		ret.success = db->put(device_id, timestamp, expiration, data, data_len);
 		if (!ret.success) ret.error = DB_ERROR;
 		break;
-	case RECEIVING: // not ready to handle put yet
+	case RECEIVING: // not ready to handle put request yet
 		ret.success = false;
 		ret.error = DATA_MOVING;
 	case DONATING:
@@ -118,7 +118,7 @@ bool HandleCommitReceiveRequest(MessageId mesg_id, partition_t partition_id)
 		!= g_current_node_state.partition_map.end()) // check if storing partition already
 	{
 		PartitionMetadata pm = g_current_node_state.partition_map[partition_id];
-		if (pm.state == PartitionState::PREPARING
+		if (pm.state == PartitionState::RECEIVING
 			&& pm.other_node == mesg_id.node_id) // retransmission of comfirm receive
 		{
 			// reply true
@@ -133,8 +133,8 @@ bool HandleCommitReceiveRequest(MessageId mesg_id, partition_t partition_id)
 	else // add to partition map
 	{
 		PartitionMetadata pm;
-		pm.db = new PartitionDB(______); // get partition db filename 
-		pm.state = PartitionState:PREPARING;
+		pm.db = NULL; // get partition db filename 
+		pm.state = PartitionState:RECEIVING;
 		pm.other_node = mesg_id.node_id;
 		g_current_node_state.partition_map[partition_id] = pm;
 		savePartitionState(g_owned_partition_state_filename);
@@ -142,6 +142,24 @@ bool HandleCommitReceiveRequest(MessageId mesg_id, partition_t partition_id)
 
 	g_current_node_state.partition_map_lock.releaseWRLock(); // 2
 	g_current_node_state.state_lock.releaseRDLock(); // 1
+	return true;
+}
+
+bool HandleCommitAsStableRequest(MessageId mesg_id, partition_t partition_id)
+{
+	assert (g_current_node_id != mesg_id.node_id);
+	g_current_node_state.partition_map_lock.acquireWRLock(); // 1
+	// Cannot commit as stable
+	if (g_current_node_state.partition_map.find(partition_id) == g_current_node_state.partition_map.end() ||
+		(g_current_node_state.partition_map.state != RECEIVED && g_current_node_state.partition_map.state != STABLE))
+	{
+		g_current_node_state.partition_map_lock.releaseWRLock(); // 1
+		return false;
+	}
+
+	g_current_node_state.partition_map[partition_t].state = PartitionMetadata::STABLE;
+	savePartitionState(g_owned_partition_state_filename);
+	g_current_node_state.partition_map_lock.releaseWRLock(); // 1
 	return true;
 }
 

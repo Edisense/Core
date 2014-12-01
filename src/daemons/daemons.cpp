@@ -4,6 +4,7 @@
 #include <dirent.h>
 #include <sys/stat.h>
 #include <iostream>
+#include <future>
 
 #include "include/global.h"
 
@@ -34,7 +35,8 @@ void LoadBalanceDaemon(unsigned int freq)
 
 		g_current_node_state.partition_map_lock.acquireRDLock();
 
-
+		partition_t victim;
+		SendCanReceive
 
 
 
@@ -74,5 +76,10 @@ void GarbageCollectDaemon(unsigned int freq)
 
 void RetryPutDaemon(unsigned int freq)
 {
-	
+
+}
+
+void DBTransferServerDaemon()
+{
+
 }

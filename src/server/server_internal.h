@@ -38,6 +38,8 @@ CanReceiveResult HandleCanReceiveRequest(MessageId mesg_id, partition_t partitio
 
 bool HandleCommitReceiveRequest(MessageId mesg_id, partition_t partition_id);
 
+bool HandleCommitAsStableRequest(MessageId mesg_id, partition_t partition_id);
+
 bool HandleUpdatePartitionOwnerRequest(MessageId mesg_id, node_t new_owner, 
 	partition_t partition_id);
 
