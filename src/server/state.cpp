@@ -84,7 +84,7 @@ void NodeStateMachine::savePartitionState(std::string &filename)
 	std::string tmp_file = filename + ".tmp";
 	std::ofstream ofs;
   	ofs.open(tmp_file);
-  	for (auto kv : partition_map)
+  	for (auto kv : partitions_owned_map)
   	{
   		PartitionMetadata pm = kv.second;
   		switch (pm.state)
@@ -154,7 +154,7 @@ void NodeStateMachine::loadPartitionState(std::string &filename)
 		}
 		tmp_map[partition_id] = pm;
 	}
-	partition_map = tmp_map;
+	partitions_owned_map = tmp_map;
 }
 
 void NodeStateMachine::saveClusterMemberList(std::string &filename)

@@ -42,8 +42,8 @@ public:
 	NodeState state;
 	RWLock state_lock;
 	
-	std::map<partition_t, PartitionMetadata> partition_map;
-	RWLock partition_map_lock;
+	std::map<partition_t, PartitionMetadata> partitions_owned_map;
+	RWLock partitions_owned_map_lock;
 
 	std::map<node_t, std::string> cluster_members;
 	RWLock cluster_members_lock;

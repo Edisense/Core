@@ -147,20 +147,20 @@ bool ReceiveDBFile(int sockfd)
 
 	partition_t partition_id = (partition_t) partition_id_long;
 	std::string partition_filename = GetPartitionDBFilename(partition_id);
-	g_current_node_state->partition_map_lock.acquireWRLock(); // 1
-	assert(g_current_node_state->partition_map.find(partition_id) 
-		!= g_current_node_state->partition_map.end());
+	g_current_node_state->partitions_owned_map_lock.acquireWRLock(); // 1
+	assert(g_current_node_state->partitions_owned_map.find(partition_id) 
+		!= g_current_node_state->partitions_owned_map.end());
 	
-	PartitionMetadata pm = g_current_node_state->partition_map[partition_id];
+	PartitionMetadata pm = g_current_node_state->partitions_owned_map[partition_id];
 	if (pm.state == PartitionState::RECEIVING)
 	{
 		rename(tmp_file.c_str(), partition_filename.c_str());
 		pm.db = new PartitionDB(partition_filename);
 		pm.state = PartitionState::RECEIVED;
-		g_current_node_state->partition_map[partition_id] = pm;
+		g_current_node_state->partitions_owned_map[partition_id] = pm;
 		g_current_node_state->savePartitionState(g_owned_partition_state_filename);
 	}
-	g_current_node_state->partition_map_lock.releaseWRLock(); // 1
+	g_current_node_state->partitions_owned_map_lock.releaseWRLock(); // 1
 
 	return true;
 }

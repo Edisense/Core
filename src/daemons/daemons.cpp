@@ -40,22 +40,22 @@ void LoadBalanceDaemon(unsigned int freq)
 
 		}
 
-		g_current_node_state->partition_map_lock.acquireWRLock();
+		g_current_node_state->partitions_owned_map_lock.acquireWRLock();
 
-		int random_elem = rand() % g_current_node_state->partition_map.size();
-		auto it = g_current_node_state->partition_map.begin();
+		int random_elem = rand() % g_current_node_state->partitions_owned_map.size();
+		auto it = g_current_node_state->partitions_owned_map.begin();
 		std::advance(it, random_elem);
 		partition_t victim = it->first;
 		PartitionMetadata pm = it->second;
 		if (pm.state != PartitionState::STABLE)
 		{
-			g_current_node_state->partition_map_lock.releaseWRLock();
+			g_current_node_state->partitions_owned_map_lock.releaseWRLock();
 			continue;
 		}
 
 		// Todo: finish implementing eviction
 
-		g_current_node_state->partition_map_lock.releaseWRLock();
+		g_current_node_state->partitions_owned_map_lock.releaseWRLock();
 	}
 }
 
@@ -79,13 +79,13 @@ void GarbageCollectDaemon(unsigned int freq)
 
 		time_t gc_before_time = current_time - kMinimumGCDelay;
 
-		g_current_node_state->partition_map_lock.acquireRDLock();
-		for (auto &kv : g_current_node_state->partition_map)
+		g_current_node_state->partitions_owned_map_lock.acquireRDLock();
+		for (auto &kv : g_current_node_state->partitions_owned_map)
 		{
 			PartitionMetadata pm = kv.second;
 			pm.db->remove(gc_before_time);
 		}
-		g_current_node_state->partition_map_lock.releaseRDLock();
+		g_current_node_state->partitions_owned_map_lock.releaseRDLock();
 	}
 }
 

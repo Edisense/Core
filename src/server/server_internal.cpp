@@ -20,18 +20,18 @@ PutResult HandlePutRequest(MessageId mesg_id, device_t device_id,
 	partition_t partition_to_put_into = g_cached_partition_table->getPartition(hash_integer(device_id));
 
 	PartitionMetadata partition_state;
-	g_current_node_state->partition_map_lock.acquireRDLock(); // 1
+	g_current_node_state->partitions_owned_map_lock.acquireRDLock(); // 1
 
 	try
 	{
-		partition_state = g_current_node_state->partition_map.at(partition_to_put_into);
+		partition_state = g_current_node_state->partitions_owned_map.at(partition_to_put_into);
 	}
 	catch (const std::out_of_range &e) // this range is not owned by current node!
 	{
 		std::cout << "received put on unowned range!" << std::endl;
 		ret.success = false;
 		ret.error = DATA_NOT_OWNED;
-		g_current_node_state->partition_map_lock.releaseRDLock(); // 1
+		g_current_node_state->partitions_owned_map_lock.releaseRDLock(); // 1
 		return ret;
 	}
 
@@ -53,7 +53,7 @@ PutResult HandlePutRequest(MessageId mesg_id, device_t device_id,
 		ret.error = DATA_MOVED;
 		ret.moved_to = partition_state.other_node;
 	}
-	g_current_node_state->partition_map_lock.releaseRDLock(); // 1
+	g_current_node_state->partitions_owned_map_lock.releaseRDLock(); // 1
 
 	return ret;
 }
@@ -81,17 +81,17 @@ CanReceiveResult HandleCanReceiveRequest(MessageId mesg_id, partition_t partitio
 		return ret;
 	}
 	
-	g_current_node_state->partition_map_lock.acquireRDLock(); // 1
-	if (g_current_node_state->partition_map.find(partition_id) 
-		!= g_current_node_state->partition_map.end()) // check if storing partition already
+	g_current_node_state->partitions_owned_map_lock.acquireRDLock(); // 1
+	if (g_current_node_state->partitions_owned_map.find(partition_id) 
+		!= g_current_node_state->partitions_owned_map.end()) // check if storing partition already
 	{
 		ret.can_recv = false;
-		g_current_node_state->partition_map_lock.releaseRDLock(); // 1
+		g_current_node_state->partitions_owned_map_lock.releaseRDLock(); // 1
 		return ret;
 	}
 	else
 	{
-		g_current_node_state->partition_map_lock.releaseRDLock(); // 1
+		g_current_node_state->partitions_owned_map_lock.releaseRDLock(); // 1
 	}
 
 	ret.can_recv = true;
@@ -117,11 +117,11 @@ bool HandleCommitReceiveRequest(MessageId mesg_id, partition_t partition_id)
 		return false;
 	}
 	
-	g_current_node_state->partition_map_lock.acquireWRLock(); // 2
-	if (g_current_node_state->partition_map.find(partition_id) 
-		!= g_current_node_state->partition_map.end()) // check if storing partition already
+	g_current_node_state->partitions_owned_map_lock.acquireWRLock(); // 2
+	if (g_current_node_state->partitions_owned_map.find(partition_id) 
+		!= g_current_node_state->partitions_owned_map.end()) // check if storing partition already
 	{
-		PartitionMetadata pm = g_current_node_state->partition_map[partition_id];
+		PartitionMetadata pm = g_current_node_state->partitions_owned_map[partition_id];
 		if (pm.state == PartitionState::RECEIVING
 			&& pm.other_node == mesg_id.node_id) // retransmission of comfirm receive
 		{
@@ -129,7 +129,7 @@ bool HandleCommitReceiveRequest(MessageId mesg_id, partition_t partition_id)
 		}
 		else // already own or receiving the partition from another source
 		{
-			g_current_node_state->partition_map_lock.releaseWRLock(); // 2
+			g_current_node_state->partitions_owned_map_lock.releaseWRLock(); // 2
 			g_current_node_state->state_lock.releaseRDLock(); // 1
 			return false;
 		}
@@ -140,11 +140,11 @@ bool HandleCommitReceiveRequest(MessageId mesg_id, partition_t partition_id)
 		pm.db = NULL; // get partition db filename 
 		pm.state = PartitionState::RECEIVING;
 		pm.other_node = mesg_id.node_id;
-		g_current_node_state->partition_map[partition_id] = pm;
+		g_current_node_state->partitions_owned_map[partition_id] = pm;
 		g_current_node_state->savePartitionState(g_owned_partition_state_filename);
 	}
 
-	g_current_node_state->partition_map_lock.releaseWRLock(); // 2
+	g_current_node_state->partitions_owned_map_lock.releaseWRLock(); // 2
 	g_current_node_state->state_lock.releaseRDLock(); // 1
 	return true;
 }
@@ -152,19 +152,19 @@ bool HandleCommitReceiveRequest(MessageId mesg_id, partition_t partition_id)
 bool HandleCommitAsStableRequest(MessageId mesg_id, partition_t partition_id)
 {
 	assert (g_current_node_id != mesg_id.node_id);
-	g_current_node_state->partition_map_lock.acquireWRLock(); // 1
+	g_current_node_state->partitions_owned_map_lock.acquireWRLock(); // 1
 	// Cannot commit as stable
-	if (g_current_node_state->partition_map.find(partition_id) == g_current_node_state->partition_map.end() ||
-		(g_current_node_state->partition_map[partition_id].state != PartitionState::RECEIVED 
-			&& g_current_node_state->partition_map[partition_id].state != PartitionState::STABLE))
+	if (g_current_node_state->partitions_owned_map.find(partition_id) == g_current_node_state->partitions_owned_map.end() ||
+		(g_current_node_state->partitions_owned_map[partition_id].state != PartitionState::RECEIVED 
+			&& g_current_node_state->partitions_owned_map[partition_id].state != PartitionState::STABLE))
 	{
-		g_current_node_state->partition_map_lock.releaseWRLock(); // 1
+		g_current_node_state->partitions_owned_map_lock.releaseWRLock(); // 1
 		return false;
 	}
 
-	g_current_node_state->partition_map[partition_id].state = PartitionState::STABLE;
+	g_current_node_state->partitions_owned_map[partition_id].state = PartitionState::STABLE;
 	g_current_node_state->savePartitionState(g_owned_partition_state_filename);
-	g_current_node_state->partition_map_lock.releaseWRLock(); // 1
+	g_current_node_state->partitions_owned_map_lock.releaseWRLock(); // 1
 	return true;
 }
 
@@ -201,16 +201,16 @@ std::list<partition_t> HandleJoinRequest(MessageId mesg_id, std::string &new_nod
 		std::cout << new_node << " " << node_id << " added to cluster" << std::endl;
 	}
 
-	g_current_node_state->partition_map_lock.acquireRDLock(); // 2
+	g_current_node_state->partitions_owned_map_lock.acquireRDLock(); // 2
 	std::list<partition_t> partitions_owned;
-	for (auto &kv : g_current_node_state->partition_map)
+	for (auto &kv : g_current_node_state->partitions_owned_map)
 	{
 		if (kv.second.state == PartitionState::STABLE)
 		{
 			partitions_owned.push_back(kv.first);
 		}
 	}
-	g_current_node_state->partition_map_lock.acquireRDLock(); // 2
+	g_current_node_state->partitions_owned_map_lock.acquireRDLock(); // 2
 
 	g_current_node_state->cluster_members_lock.releaseWRLock(); // 1
 	return partitions_owned;
@@ -244,17 +244,17 @@ GetResult HandleGetRequest(device_t device_id, time_t lower_range, time_t upper_
 	partition_t partition_to_get_from = g_cached_partition_table->getPartition(hash_integer(device_id));
 
 	PartitionMetadata partition_state;
-	g_current_node_state->partition_map_lock.acquireRDLock(); // 1
+	g_current_node_state->partitions_owned_map_lock.acquireRDLock(); // 1
 	try
 	{
-		partition_state = g_current_node_state->partition_map.at(partition_to_get_from);
+		partition_state = g_current_node_state->partitions_owned_map.at(partition_to_get_from);
 	}
 	catch (const std::out_of_range &e) // this range is not owned by current node!
 	{
 		std::cout << "received get on unowned range!" << std::endl;
 		ret.success = false;
 		ret.error = DATA_NOT_OWNED;
-		g_current_node_state->partition_map_lock.releaseRDLock(); // 1
+		g_current_node_state->partitions_owned_map_lock.releaseRDLock(); // 1
 		return ret;
 	}
 
@@ -276,7 +276,7 @@ GetResult HandleGetRequest(device_t device_id, time_t lower_range, time_t upper_
 		ret.moved_to = partition_state.other_node;
 		ret.success = false;
 	}
-	g_current_node_state->partition_map_lock.releaseRDLock(); // 1
+	g_current_node_state->partitions_owned_map_lock.releaseRDLock(); // 1
 
 	return ret;
 }
