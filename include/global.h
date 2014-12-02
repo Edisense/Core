@@ -4,7 +4,8 @@
 #include <string>
 
 #include "state.h"
-#include "partition_table.h"
+#include "partition/partition_table.h"
+#include "edisense_types.h"
 
 // cached hash of current node's hostname
 extern node_t g_current_node_id;
@@ -12,11 +13,11 @@ extern node_t g_current_node_id;
 // data structure to store partitions owned by this node,
 // state of operations, current transaction id, and cluster 
 // members list
-extern NodeStateMachine g_current_node_state;
+extern NodeStateMachine *g_current_node_state;
 
 // data structure to store mappings from partition numbers 
 // to their owners
-extern PartitionTable g_cached_partition_table;
+extern PartitionTable *g_cached_partition_table;
 
 // maximimum amount of storage that Edisense can use
 extern size_t g_local_disk_limit_in_bytes;

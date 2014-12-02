@@ -11,13 +11,16 @@
 #include "server/server_internal.h"
 #include "partition/partition_table.h"
 
+//#include "send_interface.h"
+
 #include "ble_client_internal.h"
 
-static const std::chrono::milliseconds kPutRequestTimeOut = 5000;
+static const std::chrono::milliseconds kPutRequestTimeOut(5000);
 
 bool Put(device_t device_id, time_t timestamp, time_t expiration, void *data, size_t data_len)
 {
-	int num_replicas = g_cached_partition_table->getNumReplicas();
+	return false;
+/*	int num_replicas = g_cached_partition_table->getNumReplicas();
 	int target_partition = g_cached_partition_table->getPartition(hash_integer(device_id));
 
 	transaction_t tid = g_current_node_state->getTransactionID();
@@ -45,32 +48,32 @@ bool Put(device_t device_id, time_t timestamp, time_t expiration, void *data, si
 	}
 	g_current_node_state->cluster_members_lock.releaseRDLock(); // 3
 
-	std::future<std::list<PutResult>> *future_result = SendPutRequest(tid, partition_owners, device_id, 
+	std::future<std::list<PutResult> > future_result = SendPutRequest(tid, partition_owners, device_id, 
 		timestamp, expiration, data, data_len);
 	g_cached_partition_table->lock.releaseRDLock(); // 1
 
 	// wait on the future
-	if (future_result->wait_for(kPutRequestTimeOut) != future_status::ready)
+	if (future_result.wait_for(kPutRequestTimeOut) != std::future_status::ready)
 	{
 		FreeTransaction(tid); // timed out with no response
 		return false;
 	}
-	std::list<PutResult> results = future_result->get();
+	std::list<std::pair<node_t, PutResult> > results = future_result.get();
 
 	// check results of put
 	success &= results.size() == num_replicas;
-	for (PutResult pr : results)
+	for (auto &kv: results)
 	{
-		success &= pr.success;
-		assert(pr.error != DATA_NOT_OWNED); // this would mean we are fundamentally inconsistent
-		if (pr.error == DATA_MOVED) // update location in partition table
+		success &= kv.second.success;
+		assert(kv.second.error != DATA_NOT_OWNED); // this would mean we are fundamentally inconsistent
+		if (kv.second.error == DATA_MOVED) // update location in partition table
 		{
 			g_cached_partition_table->lock.acquireWRLock(); // 4
-			assert(g_cached_partition_table->updatePartitionOwner(old_owner, pr.other_node, target_partition));
+			assert(g_cached_partition_table->updatePartitionOwner(kv.first, kv.second.moved_to, target_partition));
 			g_cached_partition_table->lock.releaseWRLock(); // 4
 		} 
 	}
 
 	FreeTransaction(tid); // free the future 
-	return success;
+	return success; */
 }

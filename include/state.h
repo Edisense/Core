@@ -6,6 +6,8 @@
 #include <string>
 #include <mutex>
 
+#include "partition/partition_db.h"
+
 #include "util/rw_lock.h"
 #include "edisense_types.h"
 
@@ -14,7 +16,6 @@ enum class NodeState
 	JOINING,
 	LEAVING,
 	STABLE,
-	RECOVERING
 };
 
 enum class PartitionState
@@ -35,7 +36,7 @@ typedef struct PartitionMetadata
 class NodeStateMachine
 {
 public:
-	transaction_t getTransactionID(std::string &filename);
+	transaction_t getTransactionID();
 
 	// use writer lock to modify, reader lock to read
 	NodeState state;
@@ -56,7 +57,7 @@ public:
 	void saveClusterMemberList(std::string &filename); // saves list of cluster members
 	void loadClusterMemberList(std::string &filename);
 private:
-	transaction_t counter;
+	transaction_t counter = 0;
 	std::recursive_mutex counter_lock;
 };
 

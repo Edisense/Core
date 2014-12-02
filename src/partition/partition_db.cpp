@@ -37,7 +37,7 @@ PartitionDB::PartitionDB(const std::string &filename)
 	fprintf(stderr, "Open database: %s\n", filename.c_str());
 	if (sqlite3_open(filename.c_str(), &db))
 	{
-		fprintf(stderr, sqlite3_errmsg(db));
+		fprintf(stderr, "%s\n", sqlite3_errmsg(db));
 		throw "Can't open database!";
 	}
 	fprintf(stderr, "Opened database successfully\n");
