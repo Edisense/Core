@@ -20,9 +20,9 @@ virtual std::future<std::pair<node_t, GetResult> > SendGetRequest(transaction_t 
 virtual std::future<std::list<node_t> > SendUpdatePartitionOwner(transaction_t tid, std::list<string> 
 	&receiving_nodes, node_t new_owner, partition_t partition_id) = 0; 
 
-// send to recipent, which is a hostname
-virtual std::future<std::pair<node_t, CanReceiveResult> > SendCanReceiveRequest(transaction_t tid, 
-	std::string &recipient, partition_t partition_id) = 0;
+// send to recipents, which is a list of hostnames
+virtual std::future<std::list<std::pair<node_t, CanReceiveResult> > > SendCanReceiveRequest(transaction_t tid, 
+	std::list<string> &receiving_nodes, partition_t partition_id) = 0;
 
 // send to recipent, which is a hostname
 virtual std::future<bool> SendCommitReceiveRequest(transaction_t tid, std::string &recipient, 
