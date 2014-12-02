@@ -59,7 +59,7 @@ int main(int argc, char *argv[])
 	int n_replicas = atoi(argv[4]);
 	if (n_partitions <= 0 || n_replicas <= 0) // TODO: determine reasonable limits
 	{
-		cerr << "thats not cool..." << endl; 
+		cerr << "thats not cool... must set reasonable number of replacas and partitions" << endl; 
 		return 0;
 	}
 
