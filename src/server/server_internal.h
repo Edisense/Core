@@ -3,9 +3,9 @@
 
 #include <list>
 
-#include "include/state.h"
+#include "state.h"
 
-#include "edisense-types.h"
+#include "edisense_types.h"
 
 enum ErrorType
 {
@@ -52,7 +52,7 @@ typedef struct GetPartitionTableResult
 	bool success;
 	int num_partitions;
 	int num_replicas;
-	partition_t *partition_table; // DO NOT WRITE TO OR FREE THIS!!!
+	node_t *partition_table; // DO NOT WRITE TO OR FREE THIS!!!
 } GetPartitionTableResult;
 
 /* Called by Monitor -- do not need mesg_id */

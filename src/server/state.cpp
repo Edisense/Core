@@ -2,32 +2,31 @@
 #include <iostream>
 #include <fstream>
 
-#include "src/partition/partition_db.h"
-#include "src/partition/hash.h"
+#include "partition/partition_db.h"
+#include "util/hash.h"
 
 #include "state.h"
+#include "global.h"
 
 static const int kCounterEpoch = 10000;
 
-using namespace std;
-
-transaction_t NodeStateMachine::getTransactionID(string &filename)
+transaction_t NodeStateMachine::getTransactionID()
 {
 	transaction_t ret;
-	lock_guard<recursive_mutex>(this->counter_lock);
+	std::lock_guard<std::recursive_mutex>(this->counter_lock);
 	ret = counter++;
 	if (ret % kCounterEpoch == 0)
 	{
-		saveNodeState(filename);
+		saveNodeState(g_current_node_state_filename);
 	}
 	return ret;
 }
 
-void NodeStateMachine::saveNodeState(string &filename)
+void NodeStateMachine::saveNodeState(std::string &filename)
 {
-	string tmp_file = filename + ".tmp";
-	ofstream ofs;
-  	ofs.open(tmpFile);
+	std::string tmp_file = filename + ".tmp";
+	std::ofstream ofs;
+  	ofs.open(tmp_file);
 
   	switch (state)
   	{
@@ -39,9 +38,6 @@ void NodeStateMachine::saveNodeState(string &filename)
   			break;
 		case NodeState::LEAVING:
 			ofs << "LEAVING";
-  			break;
-		case NodeState::RECOVERING:
-			ofs << "RECOVERING";
   			break;
   	}
 
@@ -55,10 +51,10 @@ void NodeStateMachine::saveNodeState(string &filename)
   	}
 }
 
-void NodeStateMachine::loadNodeState(string &filename)
+void NodeStateMachine::loadNodeState(std::string &filename)
 {
-	ifstream ifs(filename);
-	string s;
+	std::ifstream ifs(filename);
+	std::string s;
 	ifs >> s;
 	if (s == "STABLE")
 	{
@@ -72,10 +68,6 @@ void NodeStateMachine::loadNodeState(string &filename)
 	{
 		state = NodeState::LEAVING;
 	}
-	else if (s == "RECOVERING")
-	{
-		state = NodeState::RECOVERING;
-	}
 	else
 	{
 		throw "unrecognized state";
@@ -83,14 +75,14 @@ void NodeStateMachine::loadNodeState(string &filename)
 	transaction_t c;
 	ifs >> c;
 	counter_lock.lock();
-	counter = c + counter_epoch; // counter will never be too small
+	counter = c + kCounterEpoch; // counter will never be too small
 	counter_lock.unlock();
 }
 	
-void NodeStateMachine::savePartitionState(string &filename)
+void NodeStateMachine::savePartitionState(std::string &filename)
 {
-	string tmp_file = filename + ".tmp";
-	ofstream ofs;
+	std::string tmp_file = filename + ".tmp";
+	std::ofstream ofs;
   	ofs.open(tmp_file);
   	for (auto kv : partition_map)
   	{
@@ -110,7 +102,7 @@ void NodeStateMachine::savePartitionState(string &filename)
  	 		 	ofs << "STABLE\t" << kv.first;
  	 			break;
   		}
-  		ofs << endl;
+  		ofs << std::endl;
   	}
   	ofs.close();
 	if (rename(tmp_file.c_str(), filename.c_str()) != 0)
@@ -119,13 +111,13 @@ void NodeStateMachine::savePartitionState(string &filename)
   	}
 }
 
-void NodeStateMachine::loadPartitionState(string &filename)
+void NodeStateMachine::loadPartitionState(std::string &filename)
 {
 	std::map<partition_t, PartitionMetadata> tmp_map;
-	ifstream ifs(filename);
+	std::ifstream ifs(filename);
 	while (ifs)
 	{
-		string state;
+		std::string state;
 		ifs >> state;
 		partition_t partition_id;
 		ifs >> partition_id;
@@ -165,14 +157,14 @@ void NodeStateMachine::loadPartitionState(string &filename)
 	partition_map = tmp_map;
 }
 
-void NodeStateMachine::saveClusterMemberList(string &filename)
+void NodeStateMachine::saveClusterMemberList(std::string &filename)
 {
-	string tmp_file = filename + ".tmp";
-	ofstream ofs;
+	std::string tmp_file = filename + ".tmp";
+	std::ofstream ofs;
   	ofs.open(tmp_file);
   	for (auto kv : cluster_members)
   	{
-  		ofs << kv.second << endl;
+  		ofs << kv.second << std::endl;
   	}
   	ofs.close();
   	if (rename(tmp_file.c_str(), filename.c_str()) != 0)
@@ -181,10 +173,10 @@ void NodeStateMachine::saveClusterMemberList(string &filename)
   	}
 }
 
-void NodeStateMachine::loadClusterMemberList(string &filename)
+void NodeStateMachine::loadClusterMemberList(std::string &filename)
 {
-	ifstream ifs(filename);
-	std::map<node_t, string> node_map;
+	std::ifstream ifs(filename);
+	std::map<node_t, std::string> node_map;
 	while (ifs)
 	{
 		std::string hostname;

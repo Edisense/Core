@@ -2,6 +2,7 @@
 #include <unistd.h>
 #include <stdio.h>
 #include <dirent.h>
+#include <arpa/inet.h>
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -10,10 +11,12 @@
 #include <cstdlib>
 #include <iterator>
 
-#include "include/global.h"
+#include "global.h"
 
-#include "src/util/utilization.h"
-#include "src/ble/ble_client_internal.h"
+#include "util/utilization.h"
+#include "util/socket-util.h"
+
+#include "ble/ble_client_internal.h"
 
 #include "db_file_transfer.h"
 
@@ -28,31 +31,31 @@ void LoadBalanceDaemon(unsigned int freq)
 	while (true)
 	{
 		sleep(freq);
-		cout << "waking up to do load balancing" << endl;
+		std::cout << "waking up to do load balancing" << std::endl;
 		float current_utilization = ComputeNodeUtilization() / (float) g_local_disk_limit_in_bytes;
 		if (current_utilization < kLoadBalanceThreshold)
 		{
-			cout << "not enough load to balance, going back to sleep" << endl;
+			std::cout << "not enough load to balance, going back to sleep" << std::endl;
 			continue;
 
 		}
 
-		g_current_node_state.partition_map_lock.acquireWRLock();
+		g_current_node_state->partition_map_lock.acquireWRLock();
 
-		int random_elem = rand() % partition_map.size();
-		std::iterator it = partition_map.begin();
+		int random_elem = rand() % g_current_node_state->partition_map.size();
+		auto it = g_current_node_state->partition_map.begin();
 		std::advance(it, random_elem);
 		partition_t victim = it->first;
 		PartitionMetadata pm = it->second;
-		if (pm.state != stable)
+		if (pm.state != PartitionState::STABLE)
 		{
-			g_current_node_state.partition_map_lock.releaseWRLock();
+			g_current_node_state->partition_map_lock.releaseWRLock();
 			continue;
 		}
 
-		// finish implementing eviction
+		// Todo: finish implementing eviction
 
-		g_current_node_state.partition_map_lock.releaseWRLock();
+		g_current_node_state->partition_map_lock.releaseWRLock();
 	}
 }
 
@@ -64,25 +67,25 @@ void GarbageCollectDaemon(unsigned int freq)
 	assert (freq != 0); // this would be really dumb
 	if (freq < kSecondsInDay / 2)
 	{
-		cout << "warning: setting a gc frequency too low can diminish performance" << endl;
+		std::cout << "warning: setting a gc frequency too low can diminish performance" << std::endl;
 	} 
 	while (true)
 	{
 		sleep(freq);
-		cout << "waking up to do garbage collection" << endl;
+		std::cout << "waking up to do garbage collection" << std::endl;
 		time_t current_time;
 		time(&current_time);
 		assert (current_time > kMinimumGCDelay);
 
-		time_t gc_before_time -= kMinimumGCDelay;
+		time_t gc_before_time = current_time - kMinimumGCDelay;
 
-		g_current_node_state.partition_map_lock.acquireRDLock();
-		for (auto &kv : g_current_node_state.partition_map)
+		g_current_node_state->partition_map_lock.acquireRDLock();
+		for (auto &kv : g_current_node_state->partition_map)
 		{
 			PartitionMetadata pm = kv.second;
 			pm.db->remove(gc_before_time);
 		}
-		g_current_node_state.partition_map_lock.releaseRDLock();
+		g_current_node_state->partition_map_lock.releaseRDLock();
 	}
 }
 

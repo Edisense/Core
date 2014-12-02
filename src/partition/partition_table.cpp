@@ -72,9 +72,8 @@ bool PartitionTable::updatePartitionOwner(node_t old_owner,
 partition_t *PartitionTable::getPartitionOwners(partition_t partition_no)
 {
 	assert(partition_no < n_partitions);
-	std::list<node_t> ret;
 	int base_index = partition_no * n_replicas;
-	return &partition_table[base_index];
+	return &partition_to_nodes[base_index];
 }
 
 partition_t PartitionTable::getNextPartition(partition_t partition_no)

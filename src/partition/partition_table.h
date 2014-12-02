@@ -24,7 +24,7 @@ public:
 	int getNumPartitions() {  return n_partitions;	}
 	int getNumReplicas() {	return n_replicas;  }
 	partition_t getNextPartition(partition_t partition_no);
-	partition_t getPartitionTable() { return partition_to_nodes; }
+	node_t *getPartitionTable() { return partition_to_nodes; }
 	
 	// partition table lock
 	RWLock lock;

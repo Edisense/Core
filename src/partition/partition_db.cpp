@@ -7,7 +7,14 @@
 #include <list>
 #include <unistd.h>
 
+#include "global.h"
+
 #include "partition_db.h"
+
+std::string GetPartitionDBFilename(partition_t p)
+{
+	return g_db_files_dirname + "/" + std::to_string(p) + ".db";
+}
 
 static int createTableCallback(void *NotUsed, int argc, char **argv, char **azColName){
 	printf("Callback called: create table\n"); 
@@ -144,14 +151,14 @@ bool PartitionDB::put(device_t device_id, time_t timestamp, time_t expiration, v
 	return success;
 }
 
-std::list<struct data> * PartitionDB::get(device_t device_id, time_t min_timestamp, time_t max_timestamp)
+std::list<Data> * PartitionDB::get(device_t device_id, time_t min_timestamp, time_t max_timestamp)
 {
 	char sql[256];
 	int sql_len;
 	int result;
 	sqlite3_stmt *stmt;
 
-	std::list<data> *ret = new std::list<data>();
+	std::list<Data> *ret = new std::list<Data>();
 
 	std::lock_guard<std::mutex> lg(db_lock);	
 
@@ -180,7 +187,7 @@ std::list<struct data> * PartitionDB::get(device_t device_id, time_t min_timesta
 			assert(data_size < kMaxDataLen);
 			void const *data = sqlite3_column_blob(stmt, 4);
 
-			struct data d;
+			Data d;
 			d.timestamp = timestamp;
 			d.expiration = expiration;
 			d.datalen = data_size;
@@ -210,7 +217,7 @@ bool PartitionDB::remove(time_t timestamp)
 	int result;
 	sqlite3_stmt *stmt;
 	
-	std::list<struct data> ret;
+	std::list<Data> ret;
 	std::lock_guard<std::mutex> lg(db_lock);	
 
 	sql_len = sprintf(sql, "DELETE FROM stored_values WHERE (timestamp < %ld);", timestamp);

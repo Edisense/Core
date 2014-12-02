@@ -25,7 +25,7 @@ static inline unsigned int hash_integer(int n)
 
 // Convenience wrapper
 
-static inline node_t hostToNodeId(std::string &host)
+static inline node_t hostToNodeId(const std::string &host)
 {
   return (node_t) hash_string(host.c_str());
 }

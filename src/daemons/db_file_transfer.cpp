@@ -1,11 +1,19 @@
 // citation: send,recv file 
 // from http://stackoverflow.com/questions/25634483/send-binary-file-over-tcp-ip-connection
 
+#include <unistd.h>
+#include <netdb.h>
+#include <arpa/inet.h>
+#include <sys/stat.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <algorithm>
+
 #include "global.h"
 #include "state.h"
 
-#include "src/util/socket-util.h"
-#include "src/partition/partition.db"
+#include "util/socket-util.h"
+#include "partition/partition_db.h"
 
 #include "db_file_transfer.h"
 
@@ -16,7 +24,7 @@ static bool senddata(int sock, void *buf, int buflen)
     while (buflen > 0)
     {
         int num = send(sock, pbuf, buflen, 0);
-        if (num == SOCKET_ERROR)
+        if (num == -1)
         {
             return false;
         }
@@ -50,11 +58,11 @@ static bool sendfile(int sock, long partition_id, FILE *f)
         char buffer[1024];
         do
         {
-            size_t num = min(filesize, sizeof(buffer));
+            size_t num = std::min<long int>(filesize, sizeof(buffer));
             num = fread(buffer, 1, num, f);
             if (num < 1)
                 return false;
-            if (!senddata(sock, buffer, num, 0))
+            if (!senddata(sock, buffer, num))
                 return false;
             filesize -= num;
         }
@@ -70,7 +78,7 @@ static bool readdata(int sock, void *buf, int buflen)
     while (buflen > 0)
     {
         int num = recv(sock, pbuf, buflen, 0);
-        if (num == SOCKET_ERROR)
+        if (num == -1)
         {
             return false;
         }
@@ -94,10 +102,10 @@ static bool readlong(int sock, long *value)
 
 static const long kReadFileFailure = -1;
 
-static long readfile(int sock,FILE *f)
+static long readfile(int sock, FILE *f)
 {
-	int partition_id;
-	if (!sendLong(sock, partition_id))
+	long partition_id;
+	if (!readlong(sock, &partition_id))
         return kReadFileFailure;
     long filesize;
     if (!readlong(sock, &filesize))
@@ -107,7 +115,7 @@ static long readfile(int sock,FILE *f)
         char buffer[1024];
         do
         {
-            int num = min(filesize, sizeof(buffer));
+            int num = std::min<long int>(filesize, sizeof(buffer));
             if (!readdata(sock, buffer, num))
                 return kReadFileFailure;
             int offset = 0;
@@ -129,8 +137,8 @@ static long readfile(int sock,FILE *f)
 bool ReceiveDBFile(int sockfd)
 {
 	std::string tmp_file = "db_transfer.tmp";
-	FILE *fh = fopen(filename.c_str(), "wb");
-	long partition_id_long = readfile(sockfd);
+	FILE *fh = fopen(tmp_file.c_str(), "wb");
+	long partition_id_long = readfile(sockfd, fh);
 	fclose(fh);
 	if (partition_id_long == kReadFileFailure)
 	{
@@ -139,20 +147,20 @@ bool ReceiveDBFile(int sockfd)
 
 	partition_t partition_id = (partition_t) partition_id_long;
 	std::string partition_filename = GetPartitionDBFilename(partition_id);
-	g_current_node_state.partition_map_lock.acquireWRLock(); // 1
-	assert(g_current_node_state.partition_map.find(partition_id) 
-		!= g_current_node_state.partition_map.end());
+	g_current_node_state->partition_map_lock.acquireWRLock(); // 1
+	assert(g_current_node_state->partition_map.find(partition_id) 
+		!= g_current_node_state->partition_map.end());
 	
-	PartitionMetadata pm = g_current_node_state.partition_map[partition_id];
-	if (pm.state == RECEIVING)
+	PartitionMetadata pm = g_current_node_state->partition_map[partition_id];
+	if (pm.state == PartitionState::RECEIVING)
 	{
-		rename(tmp_file.c_str(), partition_filename);
+		rename(tmp_file.c_str(), partition_filename.c_str());
 		pm.db = new PartitionDB(partition_filename);
-		g_current_node_state.state = RECEIVED;
-		g_current_node_state.partition_map[partition_id] = pm;
-		g_current_node_state.savePartitionState[g_owned_partition_state_filename];
+		pm.state = PartitionState::RECEIVED;
+		g_current_node_state->partition_map[partition_id] = pm;
+		g_current_node_state->savePartitionState(g_owned_partition_state_filename);
 	}
-	g_current_node_state.partition_map_lock.releaseWRLock(); // 1
+	g_current_node_state->partition_map_lock.releaseWRLock(); // 1
 
 	return true;
 }

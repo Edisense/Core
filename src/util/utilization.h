@@ -5,11 +5,11 @@
 #include <sys/stat.h>
 #include <iostream>
 
-#include "include/global.h"
+#include "global.h"
 
 static size_t ComputeNodeUtilization()
 {
-	DIR *d = opendir(g_db_files_dirname);
+	DIR *d = opendir(g_db_files_dirname.c_str());
 	if (!d) 
 	{
 		throw "error openning db shards directory";
@@ -26,5 +26,5 @@ static size_t ComputeNodeUtilization()
 		}
 	}
 	closedir(d);
-	return used
+	return used;
 }
