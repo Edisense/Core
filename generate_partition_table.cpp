@@ -7,8 +7,8 @@
 #include <fcntl.h>
 #include <unistd.h>
 
-#include "partition/hash.h" // TODO: how to include this
-#include "partition_io.h"
+#include "partition/hash.h"
+#include "partition/partition_io.h"
 
 #include "edisense_types.h"
 
