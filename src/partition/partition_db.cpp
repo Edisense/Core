@@ -43,7 +43,7 @@ PartitionDB::PartitionDB(const std::string &filename)
 	fprintf(stderr, "Opened database successfully\n");
 
 	char *sql = "CREATE TABLE IF NOT EXISTS stored_values( " \
-		"row_id INT PRIMARY KEY" \
+		"row_id INT PRIMARY KEY," \
 		"device_id 	INT NOT NULL," \
 		"timestamp 	INT	NOT NULL," \
 		"expiration INT NOT NULL," \
