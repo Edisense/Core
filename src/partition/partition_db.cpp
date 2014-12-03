@@ -162,8 +162,8 @@ std::list<Data> * PartitionDB::get(device_t device_id, time_t min_timestamp, tim
 
 	std::lock_guard<std::mutex> lg(db_lock);	
 
-	sql_len = sprintf(sql, "SELECT * FROM stored_values" \
-		"WHERE (device_id == %d AND timestamp BETWEEN %ld AND %ld)" \ 
+	sql_len = sprintf(sql, "SELECT * FROM stored_values " \
+		"WHERE (device_id == %d AND timestamp BETWEEN %ld AND %ld) " \ 
 		"ORDER BY timestamp ASC;", device_id, min_timestamp, max_timestamp);
 	result = sqlite3_prepare_v2(db, sql, sql_len, &stmt, NULL);
 	if (result != SQLITE_OK)
@@ -217,7 +217,6 @@ bool PartitionDB::remove(time_t timestamp)
 	int result;
 	sqlite3_stmt *stmt;
 	
-	std::list<Data> ret;
 	std::lock_guard<std::mutex> lg(db_lock);	
 
 	sql_len = sprintf(sql, "DELETE FROM stored_values WHERE (timestamp < %ld);", timestamp);
