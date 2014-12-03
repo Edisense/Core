@@ -40,22 +40,98 @@ void LoadBalanceDaemon(unsigned int freq)
 
 		}
 
-		g_current_node_state->partitions_owned_map_lock.acquireWRLock();
-
+		// choose partition to try to donate
+		g_current_node_state->partitions_owned_map_lock.acquireRDLock(); // 1
 		int random_elem = rand() % g_current_node_state->partitions_owned_map.size();
 		auto it = g_current_node_state->partitions_owned_map.begin();
 		std::advance(it, random_elem);
-		partition_t victim = it->first;
+		partition_t victim_partition = it->first; // select a partition to try to move away
 		PartitionMetadata pm = it->second;
-		if (pm.state != PartitionState::STABLE)
+		if (pm.state != PartitionState::STABLE) // if the partition is not stable, fail the donate
 		{
-			g_current_node_state->partitions_owned_map_lock.releaseWRLock();
+			g_current_node_state->partitions_owned_map_lock.releaseRDLock(); // 1 
+			continue;
+		}
+		else
+		{
+			g_current_node_state->partitions_owned_map_lock.releaseRDLock() // 1
+		}
+
+		// choose node to receive data
+		g_current_node_state->cluster_members_lock.acquireRDLock(); // 2
+		auto it2 = g_current_node_state->cluster_members.begin();
+		std::advance(it2, random_elem);
+		node_t node_id = it2->first;
+		std::string node_hostname = it2->second;
+		g_current_node_state->cluster_members_lock.releaseRDLock(); // 2
+
+		// send commit move request
+
+		// LOG presend
+
+		transaction_t commit_recv_tid = g_current_node_state->getTransactionID();
+		std::future<bool> future_commit_recv 
+			= SendCommitReceiveRequest(commit_recv_tid, node_hostname, victim_partition);
+		if (future_commit_recv.wait() != std::future_status::ready) // must get a reply back to continue
+		{
+			FreeTransaction(commit_recv_tid);
 			continue;
 		}
 
-		// Todo: finish implementing eviction
+		if (!future_commit_recv.get()) // abort transfer
+		{
+			FreeTransaction(commit_recv_tid);
+			// LOG failure
+			continue;
+		}
+		FreeTransaction(commit_recv_tid);
+		
+		// LOG commit -- point of no return
 
-		g_current_node_state->partitions_owned_map_lock.releaseWRLock();
+		g_current_node_state->partitions_owned_map_lock.acquireWRLock(); // 3
+		g_current_node_state->partitions_owned_map[victim_partition].state = PartitionState::DONATING;
+		g_current_node_state->partitions_owned_map[victim_partition].other_node = node_id;
+		g_current_node_state->savePartitionState(g_owned_partition_state_filename); // persist to disk
+		g_current_node_state->partitions_owned_map_lock.releaseWRLock(); // 3
+
+		g_cached_partition_table->lock.acquireWRLock();
+		g_cached_partition_table->updatePartitionOwner(g_current_node_id, node_id, victim_partition);
+		g_cached_partition_table->lock.releaseWRLock();
+
+		// keep trying to send db file
+		std::thread send_db_thread([&]()
+		{
+			while(!SendDBFile(node_hostname, GetPartitionDBFilename(victim_partition), victim_partition));
+		});
+
+		// tell other nodes that the 
+		std::set<std::string> hostnames_not_heard_back;
+		g_current_node_state->cluster_members_lock.acquireRDLock(); // 4
+		for (auto &kv : g_current_node_state->cluster_members)
+		{
+			if (kv.first != node_id && kv.first != g_current_node_id)
+				other_nodes.insert(kv.second);
+		}
+		g_current_node_state->cluster_members_lock.releaseRDLock(); // 4
+
+		transaction_t ack_update_tid = g_current_node_state->getTransactionID();
+		std::future<std::set<string>> future_ackers = SendUpdatePartitionOwner(ack_update_tid, 
+		hostnames_not_heard_back, node_id, victim_partition);
+		future_ackers.wait();
+		send_db_thread.join();
+
+		// LOG all acked and transferred
+
+		// No longer own the range
+		g_current_node_state->partitions_owned_map_lock.acquireWRLock(); // 3
+		g_current_node_state->partitions_owned_map.erase(victim_partition);
+		g_current_node_state->savePartitionState(g_owned_partition_state_filename); // persist to disk
+		g_current_node_state->partitions_owned_map_lock.releaseWRLock(); // 3
+
+		transaction_t finalize_transaction_tid;
+		std::future<bool> SendCommitAsStableRequest(finalize_transaction_tid, node_hostname, victim_partition)
+
+		// LOG complete
 	}
 }
 

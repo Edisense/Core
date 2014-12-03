@@ -143,9 +143,13 @@ bool HandleCommitReceiveRequest(MessageId mesg_id, partition_t partition_id)
 		g_current_node_state->partitions_owned_map[partition_id] = pm;
 		g_current_node_state->savePartitionState(g_owned_partition_state_filename);
 	}
-
 	g_current_node_state->partitions_owned_map_lock.releaseWRLock(); // 2
 	g_current_node_state->state_lock.releaseRDLock(); // 1
+
+	// update cached partition to node mapping
+	g_cached_partition_table->lock.acquireWRLock();
+	g_cached_partition_table->updatePartitionOwner(mesg_id.node_id, g_current_node_id, partition_id);
+	g_cached_partition_table->lock.releaseWRLock();
 	return true;
 }
 

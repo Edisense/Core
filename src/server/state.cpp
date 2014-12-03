@@ -77,6 +77,7 @@ void NodeStateMachine::loadNodeState(std::string &filename)
 	counter_lock.lock();
 	counter = c + kCounterEpoch; // counter will never be too small
 	counter_lock.unlock();
+	ifs.close();
 }
 	
 void NodeStateMachine::savePartitionState(std::string &filename)
@@ -155,6 +156,7 @@ void NodeStateMachine::loadPartitionState(std::string &filename)
 		tmp_map[partition_id] = pm;
 	}
 	partitions_owned_map = tmp_map;
+	ifs.close();
 }
 
 void NodeStateMachine::saveClusterMemberList(std::string &filename)

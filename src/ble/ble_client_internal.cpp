@@ -20,16 +20,15 @@ static const std::chrono::milliseconds kPutRequestTimeOut(5000);
 bool Put(device_t device_id, time_t timestamp, time_t expiration, void *data, size_t data_len)
 {
 	return false;
-/*	int num_replicas = g_cached_partition_table->getNumReplicas();
+	int num_replicas = g_cached_partition_table->getNumReplicas();
 	int target_partition = g_cached_partition_table->getPartition(hash_integer(device_id));
 
 	transaction_t tid = g_current_node_state->getTransactionID();
 
 	g_cached_partition_table->lock.acquireRDLock(); // 1
 	g_current_node_state->cluster_members_lock.acquireRDLock(); // 3
-
-	node_t *partition_owners = g_cached_partition_table->getPartitionOwners(target_partition);
 	
+	node_t *partition_owners = g_cached_partition_table->getPartitionOwners(target_partition);
 	bool success;
 	std::list<std::string> partition_owners_hostnames;
 	for (int i = 0; i < num_replicas; i++) 
@@ -40,10 +39,17 @@ bool Put(device_t device_id, time_t timestamp, time_t expiration, void *data, si
 		}
 		else // current node owns this partition too
 		{
-			g_current_node_state->partition_map_lock.acquireRDLock(); // 2
-			success = g_current_node_state->partition_map[g_current_node_id]
-				.db->put(device_id, timestamp, expiration, data, data_len);
-			g_current_node_state->partition_map_lock.releaseRDLock(); // 2
+			g_current_node_state->partitions_owned_map_lock.acquireRDLock(); // 2
+			if (g_current_node_state->partition_map[g_current_node_id].db)
+			{
+				success = g_current_node_state->partitions_owned_map[g_current_node_id]
+					.db->put(device_id, timestamp, expiration, data, data_len);
+			}
+			else
+			{
+				success = false;
+			}
+			g_current_node_state->partitions_owned_map_lock.releaseRDLock(); // 2
 		}
 	}
 	g_current_node_state->cluster_members_lock.releaseRDLock(); // 3
@@ -75,5 +81,5 @@ bool Put(device_t device_id, time_t timestamp, time_t expiration, void *data, si
 	}
 
 	FreeTransaction(tid); // free the future 
-	return success; */
+	return success;
 }

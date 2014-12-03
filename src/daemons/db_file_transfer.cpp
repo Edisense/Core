@@ -147,9 +147,10 @@ bool ReceiveDBFile(int sockfd)
 
 	partition_t partition_id = (partition_t) partition_id_long;
 	std::string partition_filename = GetPartitionDBFilename(partition_id);
-	g_current_node_state->partitions_owned_map_lock.acquireWRLock(); // 1
+	
+    g_current_node_state->partitions_owned_map_lock.acquireWRLock(); // 1
 	assert(g_current_node_state->partitions_owned_map.find(partition_id) 
-		!= g_current_node_state->partitions_owned_map.end());
+		!= g_current_node_state->partitions_owned_map.end()); // we're actually supposed to receive this partition
 	
 	PartitionMetadata pm = g_current_node_state->partitions_owned_map[partition_id];
 	if (pm.state == PartitionState::RECEIVING)
@@ -173,5 +174,6 @@ bool SendDBFile(int sockfd, std::string &hostname, std::string &filename, partit
 	{
 		throw "could not open db file for transfer";
 	}
+    int sockfd = createClientSocket(hostname, TODO!!!!! PORT); <-------------------------------------------------
 	return sendfile(sockfd, partition_id, fh);
 }
