@@ -91,12 +91,15 @@ void LoadBalanceDaemon(unsigned int freq)
 		g_current_node_state->partitions_owned_map_lock.acquireWRLock(); // 3
 		g_current_node_state->partitions_owned_map[victim_partition].state = PartitionState::DONATING;
 		g_current_node_state->partitions_owned_map[victim_partition].other_node = node_id;
+		delete g_current_node_state->partitions_owned_map[victim_partition].db; // close reference to the db
 		g_current_node_state->savePartitionState(g_owned_partition_state_filename); // persist to disk
 		g_current_node_state->partitions_owned_map_lock.releaseWRLock(); // 3
 
 		g_cached_partition_table->lock.acquireWRLock();
 		g_cached_partition_table->updatePartitionOwner(g_current_node_id, node_id, victim_partition);
 		g_cached_partition_table->lock.releaseWRLock();
+
+		std::string partition_filename = GetPartitionDBFilename(victim_partition);
 
 		// keep trying to send db file
 		std::thread send_db_thread([&]()
@@ -118,6 +121,7 @@ void LoadBalanceDaemon(unsigned int freq)
 		std::future<std::set<string>> future_ackers = SendUpdatePartitionOwner(ack_update_tid, 
 		hostnames_not_heard_back, node_id, victim_partition);
 		future_ackers.wait();
+		FreeTransaction(ack_update_tid);
 		send_db_thread.join();
 
 		// LOG all acked and transferred
@@ -129,9 +133,13 @@ void LoadBalanceDaemon(unsigned int freq)
 		g_current_node_state->partitions_owned_map_lock.releaseWRLock(); // 3
 
 		transaction_t finalize_transaction_tid;
-		std::future<bool> SendCommitAsStableRequest(finalize_transaction_tid, node_hostname, victim_partition)
+		std::future<bool> future_finalize = SendCommitAsStableRequest(finalize_transaction_tid, node_hostname, victim_partition)
+		future_finalize.wait();
+		FreeTransaction(finalize_transaction_tid);
 
 		// LOG complete
+
+		remove(partition_filename.c_str());
 	}
 }
 

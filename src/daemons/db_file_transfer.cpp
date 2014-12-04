@@ -174,6 +174,6 @@ bool SendDBFile(int sockfd, std::string &hostname, std::string &filename, partit
 	{
 		throw "could not open db file for transfer";
 	}
-    int sockfd = createClientSocket(hostname, TODO!!!!! PORT); <-------------------------------------------------
+    int sockfd = createClientSocket(hostname, TODO!!!!! PORT); <------------------------------------------------
 	return sendfile(sockfd, partition_id, fh);
 }
