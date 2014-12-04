@@ -32,8 +32,9 @@ static int createTableCallback(void *NotUsed, int argc, char **argv, char **azCo
 	return 0;
 }
 
-PartitionDB::PartitionDB(const std::string &filename)
+PartitionDB::PartitionDB(const std::string &dbName)
 {
+	filename = dbName;
 	fprintf(stderr, "Open database: %s\n", filename.c_str());
 	if (sqlite3_open(filename.c_str(), &db))
 	{
@@ -83,7 +84,7 @@ bool PartitionDB::put(device_t device_id, time_t timestamp, time_t expiration, v
 
 	std::lock_guard<std::mutex> lg(db_lock);	
 
-	sql_len = sprintf(sql, "SELECT * FROM stored_values WHERE (device_id == %d AND timestamp == %ld);", device_id, timestamp);
+	sql_len = sprintf(sql, "SELECT * FROM stored_values WHERE (device_id = %d AND timestamp = %ld);", device_id, timestamp);
 	stmt = NULL;
 	result = sqlite3_prepare_v2(db, sql, sql_len, &stmt, NULL);
 	if (result != SQLITE_OK)
@@ -91,6 +92,8 @@ bool PartitionDB::put(device_t device_id, time_t timestamp, time_t expiration, v
 		return false;
 	}
 
+	/* 
+	 * TODO : Duplicate handling not fully implemented 
 	while (true)
 	{
 		result = sqlite3_step(stmt);
@@ -163,7 +166,7 @@ std::list<Data> * PartitionDB::get(device_t device_id, time_t min_timestamp, tim
 	std::lock_guard<std::mutex> lg(db_lock);	
 
 	sql_len = sprintf(sql, "SELECT * FROM stored_values " \
-		"WHERE (device_id == %d AND timestamp BETWEEN %ld AND %ld) " \ 
+		"WHERE (device_id = %d AND timestamp BETWEEN %ld AND %ld) " \ 
 		"ORDER BY timestamp ASC;", device_id, min_timestamp, max_timestamp);
 	result = sqlite3_prepare_v2(db, sql, sql_len, &stmt, NULL);
 	if (result != SQLITE_OK)
@@ -258,7 +261,7 @@ std::list<device_t> * PartitionDB::getDevices(void)
 		}
 		else if (result == SQLITE_ROW)
 		{
-			device_t d = sqlite3_column_int(stmt, 1);
+			device_t d = sqlite3_column_int(stmt, 0);
 			ret->push_back(d);
 		}
 		else if (result == SQLITE_BUSY)
