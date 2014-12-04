@@ -151,6 +151,9 @@ int main(int argc, const char *argv[])
     InitializeState();
   }
 
-  std::thread rebalance_thread(LoadBalanceDaemon, 60 * 5); // 5 minutes
+//  std::thread rebalance_thread(LoadBalanceDaemon, 60 * 5); // 5 minutes
   std::thread gc_thread(GarbageCollectDaemon, 60 * 60 * 12); // 12 hrs
+
+  gc_thread.join();
+//  rebalance_thread.join();
 }
