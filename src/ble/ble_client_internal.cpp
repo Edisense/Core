@@ -11,6 +11,8 @@
 #include "server/server_internal.h"
 #include "partition/partition_table.h"
 
+#include "edisense_types.h"
+
 //#include "send_interface.h"
 
 #include "ble_client_internal.h"
@@ -40,7 +42,7 @@ bool Put(device_t device_id, time_t timestamp, time_t expiration, void *data, si
 		else // current node owns this partition too
 		{
 			g_current_node_state->partitions_owned_map_lock.acquireRDLock(); // 2
-			if (g_current_node_state->partition_map[g_current_node_id].db)
+			if (g_current_node_state->partitions_owned_map[g_current_node_id].db)
 			{
 				success = g_current_node_state->partitions_owned_map[g_current_node_id]
 					.db->put(device_id, timestamp, expiration, data, data_len);
@@ -54,32 +56,32 @@ bool Put(device_t device_id, time_t timestamp, time_t expiration, void *data, si
 	}
 	g_current_node_state->cluster_members_lock.releaseRDLock(); // 3
 
-	std::future<std::list<PutResult> > future_result = SendPutRequest(tid, partition_owners, device_id, 
-		timestamp, expiration, data, data_len);
+	std::future<std::list<std::pair<std::string, PutResult>>> future_result; // TODO= SendPutRequest(tid, partition_owners, device_id, 
+//		timestamp, expiration, data, data_len);
 	g_cached_partition_table->lock.releaseRDLock(); // 1
 
 	// wait on the future
 	if (future_result.wait_for(kPutRequestTimeOut) != std::future_status::ready)
 	{
-		FreeTransaction(tid); // timed out with no response
+//		FreeTransaction(tid); // timed out with no response
 		return false;
 	}
-	std::list<std::pair<node_t, PutResult> > results = future_result.get();
+	std::list<std::pair<std::string, PutResult>> results = future_result.get();
 
 	// check results of put
 	success &= results.size() == num_replicas;
 	for (auto &kv: results)
 	{
-		success &= kv.second.success;
-		assert(kv.second.error != DATA_NOT_OWNED); // this would mean we are fundamentally inconsistent
-		if (kv.second.error == DATA_MOVED) // update location in partition table
+		success &= (kv.second.status == SUCCESS);
+		assert(kv.second.status != DATA_NOT_OWNED); // this would mean we are fundamentally inconsistent
+		if (kv.second.status == DATA_MOVED) // update location in partition table
 		{
 			g_cached_partition_table->lock.acquireWRLock(); // 4
-			assert(g_cached_partition_table->updatePartitionOwner(kv.first, kv.second.moved_to, target_partition));
+			assert(g_cached_partition_table->updatePartitionOwner(hostToNodeId(kv.first), kv.second.moved_to, target_partition));
 			g_cached_partition_table->lock.releaseWRLock(); // 4
 		} 
 	}
 
-	FreeTransaction(tid); // free the future 
+//	FreeTransaction(tid); // free the future 
 	return success;
 }

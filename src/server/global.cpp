@@ -17,3 +17,5 @@ std::string g_cluster_member_list_filename;
 std::string g_owned_partition_state_filename;
 
 std::string g_cached_partition_map_filename;
+
+std::string g_load_rebalance_daemon_log_filename;

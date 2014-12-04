@@ -94,6 +94,7 @@ bool PartitionDB::put(device_t device_id, time_t timestamp, time_t expiration, v
 
 	/* 
 	 * TODO : Duplicate handling not fully implemented 
+	 */
 	while (true)
 	{
 		result = sqlite3_step(stmt);

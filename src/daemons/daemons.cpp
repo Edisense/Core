@@ -25,6 +25,9 @@
 // minimum load before load balancing
 static const float kLoadBalanceThreshold = 0.8;
 
+static const unsigned short kDbFileTransferPort = 5000;
+
+/*
 void LoadBalanceDaemon(unsigned int freq)
 {
 	assert (freq != 0);
@@ -54,7 +57,7 @@ void LoadBalanceDaemon(unsigned int freq)
 		}
 		else
 		{
-			g_current_node_state->partitions_owned_map_lock.releaseRDLock() // 1
+			g_current_node_state->partitions_owned_map_lock.releaseRDLock(); // 1
 		}
 
 		// choose node to receive data
@@ -104,6 +107,7 @@ void LoadBalanceDaemon(unsigned int freq)
 		// keep trying to send db file
 		std::thread send_db_thread([&]()
 		{
+			int sockfd = createClientSocket(hostname, kDbFileTransferPort); <------------------------------------------------
 			while(!SendDBFile(node_hostname, GetPartitionDBFilename(victim_partition), victim_partition));
 		});
 
@@ -142,7 +146,7 @@ void LoadBalanceDaemon(unsigned int freq)
 		remove(partition_filename.c_str());
 	}
 }
-
+*/
 static const int kSecondsInDay = 60 * 60 * 24;
 static const time_t kMinimumGCDelay = 60 * 60; // 1 hr
 

@@ -29,8 +29,7 @@ PutResult HandlePutRequest(MessageId mesg_id, device_t device_id,
 	catch (const std::out_of_range &e) // this range is not owned by current node!
 	{
 		std::cout << "received put on unowned range!" << std::endl;
-		ret.success = false;
-		ret.error = DATA_NOT_OWNED;
+		ret.status = DATA_NOT_OWNED;
 		g_current_node_state->partitions_owned_map_lock.releaseRDLock(); // 1
 		return ret;
 	}
@@ -39,18 +38,16 @@ PutResult HandlePutRequest(MessageId mesg_id, device_t device_id,
 		|| partition_state.state == PartitionState::RECEIVED)
 	{
 		PartitionDB *db = partition_state.db;
-		ret.success = db->put(device_id, timestamp, expiration, data, data_len);
-		if (!ret.success) ret.error = DB_ERROR;
+		bool success = db->put(device_id, timestamp, expiration, data, data_len);
+		if (!success) ret.status = DB_ERROR;
 	}
 	else if (partition_state.state == PartitionState::RECEIVING) // not ready to handle put request yet
 	{
-		ret.success = false;
-		ret.error = DATA_MOVING;
+		ret.status = DATA_MOVING;
 	}
 	else // (partition_state.state == PartitionState::DONATING)
 	{
-		ret.success = false;
-		ret.error = DATA_MOVED;
+		ret.status = DATA_MOVED;
 		ret.moved_to = partition_state.other_node;
 	}
 	g_current_node_state->partitions_owned_map_lock.releaseRDLock(); // 1
@@ -192,6 +189,7 @@ std::list<partition_t> HandleJoinRequest(MessageId mesg_id, std::string &new_nod
 	assert (node_id == mesg_id.node_id);
 
 	g_current_node_state->cluster_members_lock.acquireWRLock(); // 1
+	
 	// handle already joined case
 	if (g_current_node_state->cluster_members.find(node_id) 
 		== g_current_node_state->cluster_members.end())
@@ -205,6 +203,7 @@ std::list<partition_t> HandleJoinRequest(MessageId mesg_id, std::string &new_nod
 		std::cout << new_node << " " << node_id << " added to cluster" << std::endl;
 	}
 
+	// send back the partitions owned by this node
 	g_current_node_state->partitions_owned_map_lock.acquireRDLock(); // 2
 	std::list<partition_t> partitions_owned;
 	for (auto &kv : g_current_node_state->partitions_owned_map)
@@ -256,8 +255,7 @@ GetResult HandleGetRequest(device_t device_id, time_t lower_range, time_t upper_
 	catch (const std::out_of_range &e) // this range is not owned by current node!
 	{
 		std::cout << "received get on unowned range!" << std::endl;
-		ret.success = false;
-		ret.error = DATA_NOT_OWNED;
+		ret.status = DATA_NOT_OWNED;
 		g_current_node_state->partitions_owned_map_lock.releaseRDLock(); // 1
 		return ret;
 	}
@@ -267,18 +265,16 @@ GetResult HandleGetRequest(device_t device_id, time_t lower_range, time_t upper_
 	{
 		PartitionDB *db = partition_state.db;
 		ret.values = db->get(device_id, lower_range, upper_range);
-		ret.success = true;
+		ret.status = SUCCESS;
 	}
 	else if (partition_state.state == PartitionState::RECEIVING)
 	{
-		ret.error = DATA_MOVING; // not ready to service reads yet
-		ret.success = false;
+		ret.status = DATA_MOVING; // not ready to service reads yet
 	}
 	else // DONATING: data no longer at this node 
 	{
-		ret.error = DATA_MOVED;
+		ret.status = DATA_MOVED;
 		ret.moved_to = partition_state.other_node;
-		ret.success = false;
 	}
 	g_current_node_state->partitions_owned_map_lock.releaseRDLock(); // 1
 
