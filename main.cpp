@@ -1,184 +1,156 @@
 
 #include <cassert>
 #include <cstring>
-#include <map>
-#include <mutex>
-#include <iostream>
 #include <thread>
 #include <unistd.h>
 #include <climits>
-#include <sys/socket.h>
-#include <arpa/inet.h>
-#include <server/server-internal.h>
-#include <unistd.h>
+#include <iostream>
 
-#include "command.h"
+//#include <boost/filesystem.hpp>
+
+#include "global.h"
 #include "state.h"
 
-#include "util/socket-util.h"
+#include "server/server_internal.h"
 
-#ifndef HOST_NAME_MAX
-#define HOST_NAME_MAX 255
-#endif
+#include "partition/partition_db.h"
 
-using namespace std;
+#include "daemons/daemons.h"
+
+#include "util/hash.h"
 
 #define NOT_IMPLEMENTED printf("NOT_IMPLEMENTED\n"); exit(0);
 
-//map<string, map<time_t, string>> data;
-//mutex data_lock;
-
-// Server constants to service internal RPCs
-static const unsigned short INTERNAL_SERVER_PORT_NO = 3000;
-static const int MAX_INTERNAL_SERVER_BACKLOG = 100;
-
-// Server constants to service front end requests
-static const unsigned short FRONT_END_SERVER_PORT_NO = 4000;
-static const int MAX_FRONT_END_SERVER_BACKLOG = 15;
-
-// Node id computed from hash of hostname
-uint32_t node_id;
-
-// Counter for transaction ids
-static uint64_t transaction_count;
-static mutex transaction_count_lock; 
-
-static uint32_t getNodeId(const string &hostname)
+static void InitializeState()
 {
-  hash<string> h;
-  return (uint32_t) h(hostname);
-}
+  g_current_node_state = new NodeStateMachine();
 
-static uint64_t incrementTransactionCount()
-{
-  uint64_t tid;
-  lock_guard<mutex> lock(transaction_count_lock);
-  tid = transaction_count++;
-//  if (tid % SOMENUMBER) checkpoint tid
-  return tid;
-}
-
-// Process internal client requests
-static void handleInternalClientRequest(int client_fd)
-{
-  char command[COMMAND_ID_LEN];
-  int bytesRead = read(client_fd, command, sizeof(command));
-  if (bytesRead != sizeof(command) || command[COMMAND_ID_LEN-1] != '\0')
-  {
-    perror("Invalid command received.");
-    close(client_fd);
-    return;
-  }
-  cout << "Received command: " << command << endl;
-  
-  if (strcmp(command, PUT) == 0)
-  {
-    handleInternalPutRequest(client_fd);
-  }
-  else if (strcmp(command, GET) == 0)
-  {
-    handleInternalGetRequest(client_fd);
-  }
-  else if (strcmp(command, RECOVER) == 0)
-  {
-    handleInternalRecoverRequest(client_fd);
-  }
-  else if (strcmp(command, MIGRATE_RANGE) == 0)
-  {
-    handleInternalMigrateRangeRequest(client_fd);
-  }
-  else if (strcmp (command, UPDATE_RANGE) == 0)
-  {
-    handleInternalUpdateRangeRequest(client_fd);
-  }
-  else if (strcmp (command, LEAVE) == 0)
-  {
-    handleInternalLeaveRequest(client_fd);
-  }
-  else if (strcmp (command, JOIN) == 0)
-  {
-    handleInternalJoinRequest(client_fd);
-  }
-  else
-  {
-    cout << "unrecognized message " << command << endl;
-  }
-
-  close(client_fd);
-}
-
-static void internalServer()
-{
-  int server_fd = createServerSocket(INTERNAL_SERVER_PORT_NO, MAX_INTERNAL_SERVER_BACKLOG);
-  if (server_fd == kServerSocketFailure)
-  {
-    perror("Unable to start front end server. Exiting.");
-    exit(1);
-  }
-
-  struct sockaddr_in cli_addr;
-  socklen_t cli_len = sizeof(cli_addr);
-//  while (true)
-//  {
-//  	int client_fd = accept(server_fd, (struct sockaddr *) &cli_addr, &cli_len);
-//  	if (client_fd < 0)
-//  	{
-//  		perror("Error on accept");
-//  		close(client_fd);
-//  		continue;
-//  	}
-//
-//  	thread client_thread(handleInternalClientRequest(client_fd));
-//    client_thread.detach();
-//	}
-
-	close(server_fd);
-}
-
-static void frontEndServer()
-{
-  int server_fd = createServerSocket(FRONT_END_SERVER_PORT_NO, MAX_FRONT_END_SERVER_BACKLOG);
-  if (server_fd == kServerSocketFailure)
-  {
-    perror("Unable to start front end server. Exiting.");
-    exit(1);
-  }
-
-  struct sockaddr_in cli_addr;
-  socklen_t cli_len = sizeof(cli_addr);
-  while (true)
-  {
-    int client_fd = accept(server_fd, (struct sockaddr *) &cli_addr, &cli_len);
-    if (client_fd < 0)
-    {
-      perror("Error on accept");
-      close(client_fd);
-      continue;
-    }
-
-    NOT_IMPLEMENTED
-  }
-
-  close(server_fd);
-}
-
-static void initializeState()
-{
   char hostname[HOST_NAME_MAX + 1]; 
   if (gethostname(hostname, sizeof(hostname)) != 0)
   {
     perror("Unable to gethostname for current machine. Exiting.");
     exit(1);
   }
-  node_id = getNodeId(string(hostname));
-  transaction_count = 0;
+  g_current_node_id = hostToNodeId(std::string(hostname)); // from hash.h
+
+  // the intial partition map must exist <---------need boost
+ // assert(boost::filesystem::exists(boost::filesystem::path(g_cached_partition_map_filename))); 
+  g_cached_partition_table = new PartitionTable(g_cached_partition_map_filename);
+
+  // initialize partition table
+  int num_partitions = g_cached_partition_table->getNumPartitions();
+  int num_replicas = g_cached_partition_table->getNumReplicas();
+  node_t *partition_table = g_cached_partition_table->getPartitionTable();
+  std::cout << "initialize for " << num_partitions << " partitions and " << num_replicas << " replicas" << std::endl;
+  
+  // build list of partitions owned from scratch
+  for (partition_t partition_id = 0; partition_id < num_partitions; partition_id++)
+  {
+    int base_index = partition_id * num_replicas;
+    for (int i = 0; i < num_replicas; i++)
+    {
+      if (partition_table[i + base_index] == g_current_node_id)
+      {
+        PartitionMetadata pm;
+        pm.db = new PartitionDB(GetPartitionDBFilename(partition_id));
+        pm.state = PartitionState::STABLE;
+
+        g_current_node_state->partitions_owned_map[partition_id] = pm;
+      }
+    }
+  }
+
+  // cluster member list must exist <---------need boost
+ // assert(boost::filesystem::exists(boost::filesystem::path(g_cluster_member_list_filename))); 
+  g_current_node_state->loadClusterMemberList(g_cluster_member_list_filename);
+
+  g_current_node_state->state = NodeState::STABLE;
+
+  // save the partition state
+  g_current_node_state->savePartitionState(g_owned_partition_state_filename);
+  g_current_node_state->saveNodeState(g_current_node_state_filename);
+}
+
+// Citation: argument parsing from word2vec by T. Mikolov
+static int ArgPos(const char *str, int argc, const char **argv) 
+{
+  int a;
+  for (a = 1; a < argc; a++) if (!strcmp(str, argv[a])) 
+  {
+    if (a == argc - 1) 
+    {
+      printf("Argument missing for %s\n", str);
+      exit(1);
+    }
+    return a;
+  }
+  return -1;
 }
 
 int main(int argc, const char *argv[])
 {
-	thread internal_comms_server_thread(internalServer);
-  thread front_end_server_thread(frontEndServer);
+  int i;
+  bool join = false, recover = false;
+  if (i = ArgPos("--datadir", argc, argv) > 0) 
+    g_db_files_dirname = std::string(argv[i+1]);
+  if (i = ArgPos("--nodestate", argc, argv) > 0) 
+    g_current_node_state_filename = std::string(argv[i+1]);
+  if (i = ArgPos("--clustermembers", argc, argv) > 0) 
+    g_cluster_member_list_filename = std::string(argv[i+1]);
+  if (i = ArgPos("--ownershipmp", argc, argv) > 0)
+    g_owned_partition_state_filename = std::string(argv[i+1]);
+  if (i = ArgPos("--partitionmap", argc, argv) > 0)
+    g_cached_partition_map_filename = std::string(argv[i+1]);
+  if (i = ArgPos("--join", argc, argv) > 0)
+    join = true;
+  if (i = ArgPos("--recover", argc, argv) > 0)
+    recover = true;
 
-  internal_comms_server_thread.join();
-  front_end_server_thread.join();
+  if (join && recover)
+  {
+    perror("cannot join and recover");
+    exit(0);
+  }
+  
+  if (g_db_files_dirname == "")
+  {
+    perror("must specify a directory for database files");
+    exit(0);
+  }
+  if (g_current_node_state_filename == "");
+  {
+    perror("must specify a filename for persisting node state");
+    exit(0);
+  }
+  if (g_cluster_member_list_filename == "")
+  {
+    perror("must specify a file for list of cluster members");
+    exit(0);
+  }
+  if (g_owned_partition_state_filename == "")
+  {
+    perror("must specify a file for owned partition state");
+    exit(0);
+  }
+  if (g_cached_partition_map_filename == "")
+  {
+    perror("must specify a file for partition map");
+    exit(0);
+  }
+
+  if (join)
+  {
+    NOT_IMPLEMENTED
+  }
+  else if (recover)
+  {
+    NOT_IMPLEMENTED    
+  }
+  else
+  {
+    InitializeState();
+  }
+
+  std::thread rebalance_thread(LoadBalanceDaemon, 60 * 5); // 5 minutes
+  std::thread gc_thread(GarbageCollectDaemon, 60 * 60 * 12); // 12 hrs
 }
