@@ -7,6 +7,6 @@
 
 bool ReceiveDBFile(int sockfd);
 
-bool SendDBFile(std::string &hostname, std::string &filename, partition_t partition_id);
+bool SendDBFile(int sockfd, const std::string &hostname, const std::string &filename, partition_t partition_id);
 
 #endif /* DB_FILE_TRANSFER */

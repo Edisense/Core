@@ -10,6 +10,10 @@
 #include <future>
 #include <cstdlib>
 #include <iterator>
+#include <string>
+#include <set>
+#include <list>
+#include <thread>
 
 #include "global.h"
 
@@ -18,7 +22,7 @@
 
 #include "ble/ble_client_internal.h"
 
-#include "db_file_transfer.h"
+#include "daemons/db_file_transfer.h"
 
 #include "daemons.h"
 
@@ -27,7 +31,14 @@ static const float kLoadBalanceThreshold = 0.8;
 
 static const unsigned short kDbFileTransferPort = 5000;
 
-/*
+static void transferDBFileInBackground(std::string hostname, partition_t partition)
+{
+	int sockfd = createClientSocket(hostname, kDbFileTransferPort);
+	std::string filename = GetPartitionDBFilename(partition);
+	while(!SendDBFile(sockfd, hostname, filename, partition));	
+	close(sockfd);
+}
+
 void LoadBalanceDaemon(unsigned int freq)
 {
 	assert (freq != 0);
@@ -40,7 +51,6 @@ void LoadBalanceDaemon(unsigned int freq)
 		{
 			std::cout << "not enough load to balance, going back to sleep" << std::endl;
 			continue;
-
 		}
 
 		// choose partition to try to donate
@@ -73,21 +83,22 @@ void LoadBalanceDaemon(unsigned int freq)
 		// LOG presend
 
 		transaction_t commit_recv_tid = g_current_node_state->getTransactionID();
-		std::future<bool> future_commit_recv 
-			= SendCommitReceiveRequest(commit_recv_tid, node_hostname, victim_partition);
-		if (future_commit_recv.wait() != std::future_status::ready) // must get a reply back to continue
-		{
-			FreeTransaction(commit_recv_tid);
-			continue;
-		}
+		std::future<bool> future_commit_recv; // TODO!!!!!!!!!!!
+		future_commit_recv.wait();
+//			= SendCommitReceiveRequest(commit_recv_tid, node_hostname, victim_partition);
+//		if ()// != std::future_status::ready) // must get a reply back to continue
+//		{
+//			FreeTransaction(commit_recv_tid);
+//			continue;
+//		}
 
 		if (!future_commit_recv.get()) // abort transfer
 		{
-			FreeTransaction(commit_recv_tid);
+//			FreeTransaction(commit_recv_tid);
 			// LOG failure
 			continue;
 		}
-		FreeTransaction(commit_recv_tid);
+//		FreeTransaction(commit_recv_tid);
 		
 		// LOG commit -- point of no return
 
@@ -105,27 +116,23 @@ void LoadBalanceDaemon(unsigned int freq)
 		std::string partition_filename = GetPartitionDBFilename(victim_partition);
 
 		// keep trying to send db file
-		std::thread send_db_thread([&]()
-		{
-			int sockfd = createClientSocket(hostname, kDbFileTransferPort); <------------------------------------------------
-			while(!SendDBFile(node_hostname, GetPartitionDBFilename(victim_partition), victim_partition));
-		});
+		std::thread send_db_thread(transferDBFileInBackground, node_hostname, victim_partition);
 
-		// tell other nodes that the 
-		std::set<std::string> hostnames_not_heard_back;
+		// tell other nodes that the partition is being donated
+		std::list<std::string> hostnames_not_heard_back;
 		g_current_node_state->cluster_members_lock.acquireRDLock(); // 4
 		for (auto &kv : g_current_node_state->cluster_members)
 		{
 			if (kv.first != node_id && kv.first != g_current_node_id)
-				other_nodes.insert(kv.second);
+				hostnames_not_heard_back.push_back(kv.second);
 		}
 		g_current_node_state->cluster_members_lock.releaseRDLock(); // 4
 
 		transaction_t ack_update_tid = g_current_node_state->getTransactionID();
-		std::future<std::set<string>> future_ackers = SendUpdatePartitionOwner(ack_update_tid, 
-		hostnames_not_heard_back, node_id, victim_partition);
+		std::future<std::set<std::string>> future_ackers;//// TODO!!!!!!!!!!! = SendUpdatePartitionOwner(ack_update_tid, 
+//		hostnames_not_heard_back, node_id, victim_partition);
 		future_ackers.wait();
-		FreeTransaction(ack_update_tid);
+//		FreeTransaction(ack_update_tid);
 		send_db_thread.join();
 
 		// LOG all acked and transferred
@@ -136,17 +143,17 @@ void LoadBalanceDaemon(unsigned int freq)
 		g_current_node_state->savePartitionState(g_owned_partition_state_filename); // persist to disk
 		g_current_node_state->partitions_owned_map_lock.releaseWRLock(); // 3
 
-		transaction_t finalize_transaction_tid;
-		std::future<bool> future_finalize = SendCommitAsStableRequest(finalize_transaction_tid, node_hostname, victim_partition)
+		transaction_t finalize_transaction_tid; // TODO!!!!!!!!!!!
+		std::future<bool> future_finalize;// = SendCommitAsStableRequest(finalize_transaction_tid, node_hostname, victim_partition)
 		future_finalize.wait();
-		FreeTransaction(finalize_transaction_tid);
+//		FreeTransaction(finalize_transaction_tid);
 
 		// LOG complete
 
 		remove(partition_filename.c_str());
 	}
 }
-*/
+
 static const int kSecondsInDay = 60 * 60 * 24;
 static const time_t kMinimumGCDelay = 60 * 60; // 1 hr
 

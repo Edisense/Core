@@ -166,7 +166,7 @@ bool ReceiveDBFile(int sockfd)
 	return true;
 }
 
-bool SendDBFile(int sockfd, std::string &hostname, std::string &filename, partition_t partition_id)
+bool SendDBFile(int sockfd, const std::string &hostname, const std::string &filename, partition_t partition_id)
 {
 	long partition_id_long = partition_id;
 	FILE *fh = fopen(filename.c_str(), "rb");
