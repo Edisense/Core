@@ -97,7 +97,7 @@ int main(int argc, const char *argv[])
     g_current_node_state_filename = std::string(argv[i+1]);
   if (i = ArgPos("--clustermembers", argc, argv) > 0) 
     g_cluster_member_list_filename = std::string(argv[i+1]);
-  if (i = ArgPos("--ownershipmp", argc, argv) > 0)
+  if (i = ArgPos("--ownershipmap", argc, argv) > 0)
     g_owned_partition_state_filename = std::string(argv[i+1]);
   if (i = ArgPos("--partitionmap", argc, argv) > 0)
     g_cached_partition_map_filename = std::string(argv[i+1]);
