@@ -1,13 +1,14 @@
 
 #include <map>
 #include <string>
-#include <ifstream>
 #include <cassert>
 #include <cstdint>
 #include <fcntl.h>
 #include <unistd.h>
+#include <fstream>
+#include <iostream>
 
-#include "partition/hash.h"
+#include "util/hash.h"
 #include "partition/partition_io.h"
 
 #include "edisense_types.h"
@@ -95,7 +96,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	writePartitionTable(output_file.c_str(), &partition_table, n_partitions, n_replicas);
+	writePartitionTable(output_file.c_str(), partition_table, n_partitions, n_replicas);
 
 	cout << "done writing partition_table: " << output_file << endl;
 }

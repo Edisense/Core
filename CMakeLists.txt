@@ -58,3 +58,9 @@ add_executable(EdisenseCore ${SOURCE_FILES})
 target_link_libraries(EdisenseCore ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(EdisenseCore ${SQLITE3_LIBRARIES})
 
+add_executable(PartitionGenerator generate_partition_table.cpp
+                                  src/util/hash.h
+                                  src/partition/partition_io.h
+                                  src/partition/partition_io.cpp)
+
+target_link_libraries(PartitionGenerator ${SQLITE3_LIBRARIES})
