@@ -13,7 +13,7 @@ node_t *readPartitionTable(const char *filename,
 	int *n_partitions, int *n_replicas)
 {
 	int fd = open(filename, O_RDONLY);
-	if (!fd) 
+	if (fd == -1) 
 		return NULL;
 	uint32_t partitions, replicas;
 	if (read(fd, &partitions, sizeof(uint32_t)) != sizeof(uint32_t)) 

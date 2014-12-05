@@ -31,7 +31,7 @@ static map<string, node_t> readHostsFile(string &hostnames)
     	string host;
     	ifs >> host;
 
-    	if (host == "") break;
+    	if (ifs.fail()) break;
 
     	if (host_to_id.find(host) != host_to_id.end())
     	{

@@ -84,8 +84,8 @@ void NodeStateMachine::savePartitionState(std::string &filename)
 {
 	std::string tmp_file = filename + ".tmp";
 	std::ofstream ofs;
-  	ofs.open(tmp_file);
-  	for (auto kv : partitions_owned_map)
+  	ofs.open(tmp_file, std::ofstream::out | std::ofstream::trunc);
+  	for (auto &kv : partitions_owned_map)
   	{
   		PartitionMetadata pm = kv.second;
   		switch (pm.state)
@@ -108,18 +108,24 @@ void NodeStateMachine::savePartitionState(std::string &filename)
   	ofs.close();
 	if (rename(tmp_file.c_str(), filename.c_str()) != 0)
   	{
-  		throw "failed to rename partition state file";
+  		perror("failed to rename partition state file");
+  		exit(1);
   	}
 }
 
 void NodeStateMachine::loadPartitionState(std::string &filename)
 {
 	std::map<partition_t, PartitionMetadata> tmp_map;
-	std::ifstream ifs(filename);
-	while (ifs)
+	std::ifstream ifs;
+
+    ifs.open (filename);
+
+	while (!ifs.eof())
 	{
 		std::string state;
 		ifs >> state;
+		if (ifs.fail()) break;
+
 		partition_t partition_id;
 		ifs >> partition_id;
 		
@@ -163,7 +169,7 @@ void NodeStateMachine::saveClusterMemberList(std::string &filename)
 {
 	std::string tmp_file = filename + ".tmp";
 	std::ofstream ofs;
-  	ofs.open(tmp_file);
+  	ofs.open(tmp_file, std::ofstream::out | std::ofstream::trunc);
   	for (auto kv : cluster_members)
   	{
   		ofs << kv.second << std::endl;
@@ -171,25 +177,27 @@ void NodeStateMachine::saveClusterMemberList(std::string &filename)
   	ofs.close();
   	if (rename(tmp_file.c_str(), filename.c_str()) != 0)
   	{
-  		throw "failed to rename cluser member list file";
+  		perror("failed to rename cluser member list file");
+  		exit(1);
   	}
 }
 
 void NodeStateMachine::loadClusterMemberList(std::string &filename)
 {
-	std::ifstream ifs(filename);
+	std::ifstream ifs;
+    ifs.open (filename);
 	std::map<node_t, std::string> node_map;
-	while (ifs)
+	while (!ifs.eof())
 	{
 		std::string hostname;
 		ifs >> hostname;
-		
-		if (hostname == "") break;
+		if (ifs.fail()) break;
 
 		node_t node_id = hostToNodeId(hostname);
 		if (node_map.find(node_id) != node_map.end())
 		{
-			throw "duplicate hostname in file";
+			perror("duplicate hostname in file");
+			exit(1);
 		}
 		node_map[node_id] = hostname;
 	}

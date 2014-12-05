@@ -17,7 +17,8 @@ PartitionTable::PartitionTable(std::string filename)
 	partition_to_nodes = readPartitionTable(filename.c_str(), &n_partitions, &n_replicas);
 	if (partition_to_nodes == NULL)
 	{
-		throw "failed to read partition table";
+		perror("failed to read partition table");
+		exit(1);
 	}
 }
 
