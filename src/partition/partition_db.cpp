@@ -13,7 +13,7 @@
 
 std::string GetPartitionDBFilename(partition_t p)
 {
-	return g_db_files_dirname + "/" + std::to_string(p) + ".db";
+	return g_db_files_dirname + "/" + std::to_string(p) + ".sqllite";
 }
 
 static int createTableCallback(void *NotUsed, int argc, char **argv, char **azColName){
@@ -36,7 +36,7 @@ PartitionDB::PartitionDB(const std::string &dbName)
 {
 	filename = dbName;
 	fprintf(stderr, "Open database: %s\n", filename.c_str());
-	if (sqlite3_open(filename.c_str(), &db))
+	if (sqlite3_open(filename.c_str(), &db) != SQLITE_OK)
 	{
 		fprintf(stderr, "%s\n", sqlite3_errmsg(db));
 		perror("Can't open database!");
