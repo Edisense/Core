@@ -61,8 +61,11 @@ bool Put(edisense_comms::Member *member, device_t device_id, time_t timestamp, t
 	}
 	g_current_node_state->cluster_members_lock.releaseRDLock(); // 3
 
+	unsigned char *charBuf = (unsigned char*)data;
+	blob dataBlob(charBuf, charBuf + data_len);
+
 	std::future<std::list<std::pair<std::string, PutResult>>> future_result 
-		= member->put(tid, partition_owners, device_id, timestamp, expiration, data, data_len);
+		= member->put(tid, partition_owners_hostnames, device_id, timestamp, expiration, dataBlob);
 	g_cached_partition_table->lock.releaseRDLock(); // 1
 
 	// wait on the future

@@ -12,7 +12,7 @@
 #include "server_internal.h"
 
 PutResult HandlePutRequest(MessageId mesg_id, device_t device_id, 
-	time_t timestamp, time_t expiration, void *data, size_t data_len)
+	time_t timestamp, time_t expiration, blob data)
 {
 	assert (g_current_node_id != mesg_id.node_id);
 
@@ -41,7 +41,7 @@ PutResult HandlePutRequest(MessageId mesg_id, device_t device_id,
 		|| partition_state.state == PartitionState::RECEIVED)
 	{
 		PartitionDB *db = partition_state.db;
-		bool success = db->put(device_id, timestamp, expiration, data, data_len);
+		bool success = db->put(device_id, timestamp, expiration, &data[0], data.size());
 		if (!success) ret.status = DB_ERROR;
 	}
 	else if (partition_state.state == PartitionState::RECEIVING) // not ready to handle put request yet
