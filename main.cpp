@@ -5,6 +5,7 @@
 #include <unistd.h>
 #include <climits>
 #include <iostream>
+#include <sys/stat.h>
 
 //#include <boost/filesystem.hpp>
 
@@ -31,12 +32,42 @@ static void InitializeState()
     perror("Unable to gethostname for current machine. Exiting.");
     exit(1);
   }
+  // print current machine's hostname and id
   std::cout << "Machine hostname : " << hostname << std::endl;
   g_current_node_id = hostToNodeId(std::string(hostname)); // from hash.h
   std::cout << "Machine node id : " << g_current_node_id << std::endl;
 
+  // database direcory must exist
+  struct stat stat_database_dir;;
+  if (lstat(g_db_files_dirname.c_str(), &stat_database_dir) == -1) 
+  {
+    std::cout << "DB directory does not exist. Creating it" << std::endl;
+    mkdir(g_db_files_dirname.c_str(), 0700);
+  }
+  else
+  {
+    std::cerr << "DB directory already exists. Perhaps you want to start the machine in recover mode? Fatal error." << std::endl;
+    exit(1); 
+  }
+
+  // cluster member list must exist <---------need boost
+  struct stat stat_cluster_member_list;
+  if (lstat(g_cluster_member_list_filename.c_str(), &stat_cluster_member_list) == -1) 
+  {
+    std::cerr << "Could not stat cluster member list file. Fatal error." << std::endl;
+    exit(1); 
+  }
+
+  g_current_node_state->loadClusterMemberList(g_cluster_member_list_filename);
+
   // the intial partition map must exist <---------need boost
- // assert(boost::filesystem::exists(boost::filesystem::path(g_cached_partition_map_filename))); 
+  struct stat stat_partition_table_file;
+  if (lstat(g_cached_partition_map_filename.c_str(), &stat_partition_table_file) == -1) 
+  {
+    std::cerr << "Could not stat partition-node map file. Fatal error." << std::endl;
+    exit(1); 
+  }
+
   g_cached_partition_table = new PartitionTable(g_cached_partition_map_filename);
 
   // initialize partition table
@@ -63,9 +94,6 @@ static void InitializeState()
     }
   }
 
-  // cluster member list must exist <---------need boost
- // assert(boost::filesystem::exists(boost::filesystem::path(g_cluster_member_list_filename))); 
-  g_current_node_state->loadClusterMemberList(g_cluster_member_list_filename);
   g_current_node_state->state = NodeState::STABLE;
 
   // save the partition state
