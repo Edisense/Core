@@ -88,17 +88,14 @@ void LoadBalanceDaemon(unsigned int freq)
 //			= SendCommitReceiveRequest(commit_recv_tid, node_hostname, victim_partition);
 //		if ()// != std::future_status::ready) // must get a reply back to continue
 //		{
-//			FreeTransaction(commit_recv_tid);
 //			continue;
 //		}
 
 		if (!future_commit_recv.get()) // abort transfer
 		{
-//			FreeTransaction(commit_recv_tid);
 			// LOG failure
 			continue;
 		}
-//		FreeTransaction(commit_recv_tid);
 		
 		// LOG commit -- point of no return
 
@@ -132,7 +129,6 @@ void LoadBalanceDaemon(unsigned int freq)
 		std::future<std::set<std::string>> future_ackers;//// TODO!!!!!!!!!!! = SendUpdatePartitionOwner(ack_update_tid, 
 //		hostnames_not_heard_back, node_id, victim_partition);
 		future_ackers.wait();
-//		FreeTransaction(ack_update_tid);
 		send_db_thread.join();
 
 		// LOG all acked and transferred
@@ -146,7 +142,6 @@ void LoadBalanceDaemon(unsigned int freq)
 		transaction_t finalize_transaction_tid; // TODO!!!!!!!!!!!
 		std::future<bool> future_finalize;// = SendCommitAsStableRequest(finalize_transaction_tid, node_hostname, victim_partition)
 		future_finalize.wait();
-//		FreeTransaction(finalize_transaction_tid);
 
 		// LOG complete
 
@@ -196,7 +191,8 @@ void DBTransferServerDaemon()
 	int server_fd = createServerSocket(kDBTransferServerPortNo, kDBTransferServerBacklog);
   	if (server_fd == kServerSocketFailure)
   	{
-    	throw "Unable to start db transfer server.";
+    	perror("Unable to start db transfer server");
+    	exit(1);
   	}
 
   	struct sockaddr_in cli_addr;
