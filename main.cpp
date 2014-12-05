@@ -74,14 +74,14 @@ static void InitializeState()
 }
 
 // Citation: argument parsing from word2vec by T. Mikolov
-static int ArgPos(const char *str, int argc, const char **argv) 
+static int ArgPos(const char *str, int argc, const char **argv, bool has_additional) 
 {
   int a;
   for (a = 1; a < argc; a++) 
   {
     if (strcmp(str, argv[a]) == 0) 
     {
-      if (a == argc - 1) 
+      if (has_additional && a == argc - 1) 
       {
         printf("Argument missing for %s\n", str);
         exit(1);
@@ -97,21 +97,21 @@ int main(int argc, const char *argv[])
 {
   int i;
   bool join = false, recover = false, debug = false;
-  if ((i = ArgPos("--datadir", argc, argv)) > 0) 
+  if ((i = ArgPos("--datadir", argc, argv, true)) > 0) 
     g_db_files_dirname = std::string(argv[i+1]);
-  if ((i = ArgPos("--nodestate", argc, argv)) > 0) 
+  if ((i = ArgPos("--nodestate", argc, argv, true)) > 0) 
     g_current_node_state_filename = std::string(argv[i+1]);
-  if ((i = ArgPos("--clustermembers", argc, argv)) > 0) 
+  if ((i = ArgPos("--clustermembers", argc, argv, true)) > 0) 
     g_cluster_member_list_filename = std::string(argv[i+1]);
-  if ((i = ArgPos("--ownershipmap", argc, argv)) > 0)
+  if ((i = ArgPos("--ownershipmap", argc, argv, true)) > 0)
     g_owned_partition_state_filename = std::string(argv[i+1]);
-  if ((i = ArgPos("--partitionmap", argc, argv)) > 0)
+  if ((i = ArgPos("--partitionmap", argc, argv, true)) > 0)
     g_cached_partition_map_filename = std::string(argv[i+1]);
-  if ((i = ArgPos("--join", argc, argv)) > 0)
+  if ((i = ArgPos("--join", argc, argv, false)) > 0)
     join = true;
-  if ((i = ArgPos("--recover", argc, argv)) > 0)
+  if ((i = ArgPos("--recover", argc, argv, false)) > 0)
     recover = true;
-  if ((i = ArgPos("--debug", argc, argv)) > 0)
+  if ((i = ArgPos("--debug", argc, argv, false)) > 0)
     debug = true;
 
   std::cout << "DB directory : " << g_db_files_dirname << std::endl;
