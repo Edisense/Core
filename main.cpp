@@ -81,7 +81,6 @@ static int ArgPos(const char *str, int argc, const char **argv)
   int a;
   for (a = 1; a < argc; a++) 
   {
-    printf("%s %s\n", str, argv[a]);
     if (strcmp(str, argv[a]) == 0) 
     {
       if (a == argc - 1) 
