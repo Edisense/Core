@@ -12,12 +12,10 @@
 #include "state.h"
 
 #include "server/server_internal.h"
-
 #include "partition/partition_db.h"
-
 #include "daemons/daemons.h"
-
 #include "util/hash.h"
+#include "ble/ble_client_internal.h"
 
 #define NOT_IMPLEMENTED printf("NOT_IMPLEMENTED\n"); exit(0);
 
@@ -98,7 +96,7 @@ static int ArgPos(const char *str, int argc, const char **argv)
 int main(int argc, const char *argv[])
 {
   int i;
-  bool join = false, recover = false;
+  bool join = false, recover = false, debug = false;
   if ((i = ArgPos("--datadir", argc, argv)) > 0) 
     g_db_files_dirname = std::string(argv[i+1]);
   if ((i = ArgPos("--nodestate", argc, argv)) > 0) 
@@ -113,6 +111,8 @@ int main(int argc, const char *argv[])
     join = true;
   if ((i = ArgPos("--recover", argc, argv)) > 0)
     recover = true;
+  if ((i = ArgPos("--debug", argc, argv)) > 0)
+    debug = true;
 
   std::cout << "DB directory : " << g_db_files_dirname << std::endl;
   std::cout << "Node state file : " << g_current_node_state_filename << std::endl;
@@ -167,6 +167,12 @@ int main(int argc, const char *argv[])
 
 //  std::thread rebalance_thread(LoadBalanceDaemon, 60 * 5); // 5 minutes
   std::thread gc_thread(GarbageCollectDaemon, 60 * 60 * 12); // 12 hrs
+  
+  if (debug) // simulate data
+  {
+    std::thread simulate_put_thread(SimulatePutDaemon, 1, 42);
+    simulate_put_thread.detach();
+  }
 
   gc_thread.join();
 //  rebalance_thread.join();

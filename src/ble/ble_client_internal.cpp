@@ -1,8 +1,12 @@
 
 #include <list>
+#include <ctime>
 #include <future>
 #include <cassert>
+#include <thread>
 #include <chrono>
+#include <iostream>
+#include <unistd.h>
 
 #include "global.h"
 #include "state.h"
@@ -12,8 +16,6 @@
 #include "partition/partition_table.h"
 
 #include "edisense_types.h"
-
-//#include "send_interface.h"
 
 #include "ble_client_internal.h"
 
@@ -62,7 +64,6 @@ bool Put(device_t device_id, time_t timestamp, time_t expiration, void *data, si
 	// wait on the future
 	if (future_result.wait_for(kPutRequestTimeOut) != std::future_status::ready)
 	{
-//		FreeTransaction(tid); // timed out with no response
 		return false;
 	}
 	std::list<std::pair<std::string, PutResult>> results = future_result.get();
@@ -81,6 +82,41 @@ bool Put(device_t device_id, time_t timestamp, time_t expiration, void *data, si
 		} 
 	}
 
-//	FreeTransaction(tid); // free the future 
 	return success;
+}
+
+static const int kSecondsInDay = 60 * 60 * 24;
+void SimulatePutDaemon(unsigned int freq, device_t device_id)
+{
+	assert(freq != 0);
+	unsigned long long counter = 0; // we will use this as our data
+	time_t timestamp;
+	time(&timestamp);
+	time_t expiration = timestamp + kSecondsInDay; // 1 day later 
+	while (true)
+	{
+		sleep(freq);
+		if (Put(device_id, timestamp, expiration, &counter, sizeof(unsigned long long)))
+		{
+			std::cout << "Put successful: " << device_id << " (device) " << timestamp 
+				<< " (timestamp) " << expiration << " (expiry) " << counter << " (value)"
+				<< std::endl;
+			counter++;
+			time_t new_timestamp;
+			time(&new_timestamp);
+			do 
+			{
+				time(&new_timestamp);
+			}
+			while (new_timestamp <= timestamp); // make sure timestamps do not conflict
+			timestamp = new_timestamp;
+			expiration = timestamp + kSecondsInDay;
+		}
+		else
+		{
+			std::cout << "Put failed: " << device_id << " (device) " << timestamp 
+				<< " (timestamp) " << expiration << " (expiry) " << counter << " (value)"
+				<< std::endl;
+		}
+	}
 }
