@@ -21,7 +21,6 @@ static const std::chrono::milliseconds kPutRequestTimeOut(5000);
 
 bool Put(device_t device_id, time_t timestamp, time_t expiration, void *data, size_t data_len)
 {
-	return false;
 	int num_replicas = g_cached_partition_table->getNumReplicas();
 	int target_partition = g_cached_partition_table->getPartition(hash_integer(device_id));
 
