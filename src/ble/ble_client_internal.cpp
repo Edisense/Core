@@ -15,13 +15,17 @@
 #include "server/server_internal.h"
 #include "partition/partition_table.h"
 
+
+#include <edisense_comms.h>
+#include <member.h> 
+
 #include "edisense_types.h"
 
 #include "ble_client_internal.h"
 
 static const std::chrono::milliseconds kPutRequestTimeOut(5000);
 
-bool Put(device_t device_id, time_t timestamp, time_t expiration, void *data, size_t data_len)
+bool Put(edisense_comms::Member *member, device_t device_id, time_t timestamp, time_t expiration, void *data, size_t data_len)
 {
 	int num_replicas = g_cached_partition_table->getNumReplicas();
 	int target_partition = g_cached_partition_table->getPartition(hash_integer(device_id));
@@ -57,8 +61,8 @@ bool Put(device_t device_id, time_t timestamp, time_t expiration, void *data, si
 	}
 	g_current_node_state->cluster_members_lock.releaseRDLock(); // 3
 
-	std::future<std::list<std::pair<std::string, PutResult>>> future_result ;//= 	client->put(tid, partition_owners, device_id,
-//		timestamp, expiration, data, data_len);
+	std::future<std::list<std::pair<std::string, PutResult>>> future_result 
+		= member->put(tid, partition_owners, device_id, timestamp, expiration, data, data_len);
 	g_cached_partition_table->lock.releaseRDLock(); // 1
 
 	// wait on the future
@@ -86,7 +90,7 @@ bool Put(device_t device_id, time_t timestamp, time_t expiration, void *data, si
 }
 
 static const int kSecondsInDay = 60 * 60 * 24;
-void SimulatePutDaemon(unsigned int freq, device_t device_id)
+void SimulatePutDaemon(edisense_comms::Member *member, unsigned int freq, device_t device_id)
 {
 	assert(freq != 0);
 	unsigned long long counter = 0; // we will use this as our data
@@ -96,7 +100,7 @@ void SimulatePutDaemon(unsigned int freq, device_t device_id)
 	while (true)
 	{
 		sleep(freq);
-		if (Put(device_id, timestamp, expiration, &counter, sizeof(unsigned long long)))
+		if (Put(member, device_id, timestamp, expiration, &counter, sizeof(unsigned long long)))
 		{
 			std::cout << "Put successful: " << device_id << " (device) " << timestamp 
 				<< " (timestamp) " << expiration << " (expiry) " << counter << " (value)"

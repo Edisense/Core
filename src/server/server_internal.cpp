@@ -16,6 +16,9 @@ PutResult HandlePutRequest(MessageId mesg_id, device_t device_id,
 {
 	assert (g_current_node_id != mesg_id.node_id);
 
+	std::cout << "Received put request from " << mesg_id.node_id << " : " << device_id << " (device) " << timestamp 
+				<< " (timestamp) " << expiration << " (expiry) " << std::endl;
+
 	PutResult ret;
 	partition_t partition_to_put_into = g_cached_partition_table->getPartition(hash_integer(device_id));
 
