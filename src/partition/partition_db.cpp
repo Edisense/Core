@@ -39,7 +39,8 @@ PartitionDB::PartitionDB(const std::string &dbName)
 	if (sqlite3_open(filename.c_str(), &db))
 	{
 		fprintf(stderr, "%s\n", sqlite3_errmsg(db));
-		throw "Can't open database!";
+		perror("Can't open database!");
+		exit(1);
 	}
 	fprintf(stderr, "Opened database successfully\n");
 
@@ -55,7 +56,8 @@ PartitionDB::PartitionDB(const std::string &dbName)
 	{
 		fprintf(stderr, "SQL error: %s\n", errMsg);
 		sqlite3_free(errMsg);
-		throw "Table not found and can't create it!";
+		perror("Table not found and can't create it!");
+		exit(1);
 	}
 }
 
