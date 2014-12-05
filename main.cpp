@@ -73,21 +73,20 @@ static void InitializeState()
   g_current_node_state->saveNodeState(g_current_node_state_filename);
 }
 
-// Citation: argument parsing from word2vec by T. Mikolov
+// Citation: modified argument parsing function adapted from word2vec by T. Mikolov
 static int ArgPos(const char *str, int argc, const char **argv, bool has_additional) 
 {
-  int a;
-  for (a = 1; a < argc; a++) 
+  int i;
+  for (i = 1; i < argc; i++) 
   {
-    if (strcmp(str, argv[a]) == 0) 
+    if (strcmp(str, argv[i]) == 0) 
     {
-      if (has_additional && a == argc - 1) 
+      if (has_additional && i == argc - 1) 
       {
         printf("Argument missing for %s\n", str);
         exit(1);
       }
-      DEBUG(a)
-      return a;
+      return i;
     }
   }
   return -1;
