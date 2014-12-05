@@ -9,7 +9,7 @@
 #include "partition_io.h"
 
 // read binary encoded partition table: PARTITION REPLICAS TABLE
-partition_t *readPartitionTable(const char *filename, 
+node_t *readPartitionTable(const char *filename, 
 	int *n_partitions, int *n_replicas)
 {
 	int fd = open(filename, O_RDONLY);
@@ -20,8 +20,8 @@ partition_t *readPartitionTable(const char *filename,
 		return NULL;
 	if (read(fd, &replicas, sizeof(uint32_t)) != sizeof(uint32_t)) 
 		return NULL;
-	size_t table_size = sizeof(partition_t) * partitions * replicas;
-	partition_t *table = (partition_t *) malloc(table_size);
+	size_t table_size = sizeof(node_t) * partitions * replicas;
+	node_t *table = (node_t *) malloc(table_size);
 	size_t bytes_read = read(fd, table, table_size);
 	if (bytes_read != table_size)
 	{

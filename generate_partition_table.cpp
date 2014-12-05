@@ -84,7 +84,7 @@ int main(int argc, char *argv[])
 	cerr << "partition table size: " << partition_table_size << endl;
 
 	// allocate partition table
-	partition_t partition_table[partition_table_size];
+	node_t partition_table[partition_table_size];
 
 	int partition_table_idx = 0;
 	
@@ -106,6 +106,15 @@ int main(int argc, char *argv[])
 	}
 
 	assert(writePartitionTable(output_file.c_str(), partition_table, n_partitions, n_replicas));
+
+	// sanity check
+	int replicas;
+	int partitions;
+	node_t *partition_table2 = readPartitionTable(output_file.c_str(), &partitions, &replicas);
+	assert(replicas == n_replicas);
+	assert(partitions == n_partitions);
+	for (int i = 0; i < partition_table_size; i++) 
+		assert(partition_table[i] == partition_table2[i]);
 
 	cout << "done writing partition_table: " << output_file << endl;
 }
