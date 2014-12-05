@@ -14,6 +14,8 @@
 #include <set>
 #include <list>
 #include <thread>
+#include <edisense_comms.h>
+#include <member.h>
 
 #include "global.h"
 
@@ -25,6 +27,8 @@
 #include "daemons/db_file_transfer.h"
 
 #include "daemons.h"
+
+#define REMOTE_TIMEOUT 2000
 
 // minimum load before load balancing
 static const float kLoadBalanceThreshold = 0.8;
@@ -39,7 +43,8 @@ static void transferDBFileInBackground(std::string hostname, partition_t partiti
 	close(sockfd);
 }
 
-void LoadBalanceDaemon(unsigned int freq)
+// TODO Extract this into functions - I know opinions differ on approriate length, but 100 is too many ;) - JR
+void LoadBalanceDaemon(edisense_comms::Member *member, unsigned int freq)
 {
 	assert (freq != 0);
 	while (true)
@@ -84,15 +89,11 @@ void LoadBalanceDaemon(unsigned int freq)
 
 		transaction_t commit_recv_tid = g_current_node_state->getTransactionID();
 		std::future<bool> future_commit_recv; // TODO!!!!!!!!!!!
-		future_commit_recv.wait();
-//			= SendCommitReceiveRequest(commit_recv_tid, node_hostname, victim_partition);
-//		if ()// != std::future_status::ready) // must get a reply back to continue
-//		{
-//			continue;
-//		}
-
-		if (!future_commit_recv.get()) // abort transfer
+		member->commitReceiveRequest(commit_recv_tid, node_hostname, victim_partition);
+		std::future_status status = future_commit_recv.wait_for(std::chrono::milliseconds(REMOTE_TIMEOUT));
+		if (status != std::future_status::ready) // must get a reply back to continue
 		{
+//			FreeTransaction(commit_recv_tid);
 			// LOG failure
 			continue;
 		}
@@ -126,9 +127,11 @@ void LoadBalanceDaemon(unsigned int freq)
 		g_current_node_state->cluster_members_lock.releaseRDLock(); // 4
 
 		transaction_t ack_update_tid = g_current_node_state->getTransactionID();
-		std::future<std::set<std::string>> future_ackers;//// TODO!!!!!!!!!!! = SendUpdatePartitionOwner(ack_update_tid, 
-//		hostnames_not_heard_back, node_id, victim_partition);
-		future_ackers.wait();
+		std::future<std::list<std::string>> future_ackers;//// TODO!!!!!!!!!!! = SendUpdatePartitionOwner(ack_update_tid,
+		future_ackers = member->updatePartitionOwner(ack_update_tid, hostnames_not_heard_back, node_id, victim_partition);
+
+		future_ackers.wait(); // TODO Should probably validate that the ones we heard back from are everyone
+//		FreeTransaction(ack_update_tid);
 		send_db_thread.join();
 
 		// LOG all acked and transferred
@@ -140,7 +143,7 @@ void LoadBalanceDaemon(unsigned int freq)
 		g_current_node_state->partitions_owned_map_lock.releaseWRLock(); // 3
 
 		transaction_t finalize_transaction_tid; // TODO!!!!!!!!!!!
-		std::future<bool> future_finalize;// = SendCommitAsStableRequest(finalize_transaction_tid, node_hostname, victim_partition)
+		std::future<bool> future_finalize = member->commitAsStableRequest(finalize_transaction_tid, node_hostname, victim_partition);
 		future_finalize.wait();
 
 		// LOG complete

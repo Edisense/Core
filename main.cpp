@@ -5,6 +5,8 @@
 #include <unistd.h>
 #include <climits>
 #include <iostream>
+#include <edisense_comms.h>
+#include <member.h>
 #include <sys/stat.h>
 
 //#include <boost/filesystem.hpp>
@@ -19,6 +21,10 @@
 #include "ble/ble_client_internal.h"
 
 #define NOT_IMPLEMENTED printf("NOT_IMPLEMENTED\n"); exit(0);
+
+#ifndef HOST_NAME_MAX // This variable isn't present in BSD, which means it isn't on OSX either
+#define HOST_NAME_MAX 255
+#endif
 
 #define DEBUG(x) printf("%d\n", x);
 
@@ -179,6 +185,8 @@ int main(int argc, const char *argv[])
     exit(0);
   }
 
+  edisense_comms::Member member;
+
   if (join)
   {
     NOT_IMPLEMENTED
@@ -192,7 +200,7 @@ int main(int argc, const char *argv[])
     InitializeState();
   }
 
-//  std::thread rebalance_thread(LoadBalanceDaemon, 60 * 5); // 5 minutes
+  std::thread rebalance_thread(LoadBalanceDaemon, &member, 60 * 5); // 5 minutes
   std::thread gc_thread(GarbageCollectDaemon, 60 * 60 * 12); // 12 hrs
   
   if (debug) // simulate data
@@ -202,5 +210,5 @@ int main(int argc, const char *argv[])
   }
 
   gc_thread.join();
-//  rebalance_thread.join();
+  rebalance_thread.join();
 }

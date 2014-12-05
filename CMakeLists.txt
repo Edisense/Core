@@ -55,8 +55,13 @@ set(SOURCE_FILES main.cpp
 
 add_executable(EdisenseCore ${SOURCE_FILES})
 
+
 target_link_libraries(EdisenseCore ${CMAKE_THREAD_LIBS_INIT})
 target_link_libraries(EdisenseCore ${SQLITE3_LIBRARIES})
+target_link_libraries(EdisenseCore zmqpp)
+target_link_libraries(EdisenseCore EdisenseComms)
+
+
 
 add_executable(PartitionGenerator generate_partition_table.cpp
                                   src/util/hash.h

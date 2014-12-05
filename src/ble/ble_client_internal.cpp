@@ -57,7 +57,7 @@ bool Put(device_t device_id, time_t timestamp, time_t expiration, void *data, si
 	}
 	g_current_node_state->cluster_members_lock.releaseRDLock(); // 3
 
-	std::future<std::list<std::pair<std::string, PutResult>>> future_result; // TODO= SendPutRequest(tid, partition_owners, device_id, 
+	std::future<std::list<std::pair<std::string, PutResult>>> future_result ;//= 	client->put(tid, partition_owners, device_id,
 //		timestamp, expiration, data, data_len);
 	g_cached_partition_table->lock.releaseRDLock(); // 1
 
