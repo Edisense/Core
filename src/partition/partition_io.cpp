@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <iostream>
+#include <cassert>
 
 #include "partition_io.h"
 
@@ -35,31 +37,36 @@ partition_t *readPartitionTable(const char *filename,
 bool writePartitionTable(const char *filename, partition_t *table,
 	int n_partitions, int n_replicas)
 {
-	int fd = open(filename, O_WRONLY | O_TRUNC);
-	if (fd == 0) 
+	int fd = open(filename, O_CREAT | O_WRONLY | O_TRUNC, S_IRWXU | S_IRWXG | S_IRWXO);
+	if (fd < 0) 
 	{
+		perror("could not open partition map file.");
 		return false;
 	}
 	uint32_t buf = n_partitions;
 	if (write(fd, &buf, sizeof(uint32_t)) != sizeof(uint32_t)) 
 	{
+		perror("could not write n_partitions.");
 		close(fd);
 		return false;
 	}
 	buf = n_replicas;
 	if (write(fd, &buf, sizeof(uint32_t)) != sizeof(uint32_t)) 
 	{
+		perror("could not write n_replicas.");
 		close(fd);
 		return false;
 	}
 	size_t table_size = sizeof(partition_t) * n_partitions *n_replicas;
 	if (write(fd, table, table_size) != table_size) 
 	{
+		perror("could not write table.");
 		close(fd);
 		return false;
 	}
 	if (fsync(fd) != 0) 
 	{
+		perror("could fsync file.");
 		close(fd);
 		return false;
 	}

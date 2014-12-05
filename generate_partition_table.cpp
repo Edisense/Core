@@ -31,6 +31,8 @@ static map<string, node_t> readHostsFile(string &hostnames)
     	string host;
     	ifs >> host;
 
+    	if (host == "") break;
+
     	if (host_to_id.find(host) != host_to_id.end())
     	{
     		cerr << "duplicate hostnames in file: " << host << endl;
@@ -38,6 +40,9 @@ static map<string, node_t> readHostsFile(string &hostnames)
     	}
 
     	node_t node_id = hostToNodeId(host);
+
+    	cout << host << '\t' << node_id << endl;
+
     	host_to_id[host] = node_id;
     }
 
@@ -58,6 +63,8 @@ int main(int argc, char *argv[])
 
 	int n_partitions = atoi(argv[3]);
 	int n_replicas = atoi(argv[4]);
+	// cerr << n_partitions << endl;
+	// cerr << n_replicas << endl;
 	if (n_partitions <= 0 || n_replicas <= 0) // TODO: determine reasonable limits
 	{
 		cerr << "thats not cool... must set reasonable number of replacas and partitions" << endl; 
@@ -73,7 +80,8 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-	size_t partition_table_size = n_partitions * n_replicas * sizeof(node_t);
+	size_t partition_table_size = n_partitions * n_replicas;
+	cerr << "partition table size: " << partition_table_size << endl;
 
 	// allocate partition table
 	partition_t partition_table[partition_table_size];
@@ -85,6 +93,7 @@ int main(int argc, char *argv[])
 	{
 		for (auto &kv : host_to_id)
 		{
+			cerr << "allocate: (" << partition_table_idx << ") " << kv.second << endl;
 			partition_table[partition_table_idx] = kv.second;
 			partition_table_idx++;
 
@@ -96,7 +105,7 @@ int main(int argc, char *argv[])
 		}
 	}
 
-	writePartitionTable(output_file.c_str(), partition_table, n_partitions, n_replicas);
+	assert(writePartitionTable(output_file.c_str(), partition_table, n_partitions, n_replicas));
 
 	cout << "done writing partition_table: " << output_file << endl;
 }

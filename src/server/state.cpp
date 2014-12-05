@@ -183,6 +183,9 @@ void NodeStateMachine::loadClusterMemberList(std::string &filename)
 	{
 		std::string hostname;
 		ifs >> hostname;
+		
+		if (hostname == "") break;
+
 		node_t node_id = hostToNodeId(hostname);
 		if (node_map.find(node_id) != node_map.end())
 		{
