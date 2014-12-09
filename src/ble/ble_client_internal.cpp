@@ -63,35 +63,35 @@ bool Put(edisense_comms::Member *member, device_t device_id, time_t timestamp, t
 
 	if (!partition_owners_hostnames.empty())
 	{
-	unsigned char *charBuf = (unsigned char*)data;
-	blob dataBlob(charBuf, charBuf + data_len);
+		unsigned char *charBuf = (unsigned char*)data;
+		blob dataBlob(charBuf, charBuf + data_len);
 
-	std::future<std::list<std::pair<std::string, PutResult>>> future_result 
-		= member->put(tid, partition_owners_hostnames, device_id, timestamp, expiration, dataBlob);
-	g_cached_partition_table->lock.releaseRDLock(); // 1
+		std::future<std::list<std::pair<std::string, PutResult>>> future_result 
+			= member->put(tid, partition_owners_hostnames, device_id, timestamp, expiration, dataBlob);
+		g_cached_partition_table->lock.releaseRDLock(); // 1
 
-	// wait on the future
-	if (future_result.wait_for(kPutRequestTimeOut) != std::future_status::ready)
-	{
-		return false;
-	}
-	std::list<std::pair<std::string, PutResult>> results = future_result.get();
-
-	// check results of put
-	success &= results.size() == num_replicas;
-	for (auto &kv: results)
-	{
-		success &= (kv.second.status == SUCCESS);
-		assert(kv.second.status != DATA_NOT_OWNED); // this would mean we are fundamentally inconsistent
-		if (kv.second.status == DATA_MOVED) // update location in partition table
+		// wait on the future
+		if (future_result.wait_for(kPutRequestTimeOut) != std::future_status::ready)
 		{
-			g_cached_partition_table->lock.acquireWRLock(); // 4
-			assert(g_cached_partition_table->updatePartitionOwner(hostToNodeId(kv.first), kv.second.moved_to, target_partition));
-			g_cached_partition_table->lock.releaseWRLock(); // 4
-		} 
-	}
+			return false;
+		}
+		std::list<std::pair<std::string, PutResult>> results = future_result.get();
 
-	return success;
+		// check results of put
+		success &= results.size() == num_replicas;
+		for (auto &kv: results)
+		{
+			success &= (kv.second.status == SUCCESS);
+			assert(kv.second.status != DATA_NOT_OWNED); // this would mean we are fundamentally inconsistent
+			if (kv.second.status == DATA_MOVED) // update location in partition table
+			{
+				g_cached_partition_table->lock.acquireWRLock(); // 4
+				assert(g_cached_partition_table->updatePartitionOwner(hostToNodeId(kv.first), kv.second.moved_to, target_partition));
+				g_cached_partition_table->lock.releaseWRLock(); // 4
+			} 
+		}
+		return success;
+	}
 }
 
 static const int kSecondsInDay = 60 * 60 * 24;
