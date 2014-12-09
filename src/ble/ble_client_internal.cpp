@@ -47,9 +47,9 @@ bool Put(edisense_comms::Member *member, device_t device_id, time_t timestamp, t
 		else // current node owns this partition too
 		{
 			g_current_node_state->partitions_owned_map_lock.acquireRDLock(); // 2
-			if (g_current_node_state->partitions_owned_map[g_current_node_id].db)
+			if (g_current_node_state->partitions_owned_map[target_partition].db)
 			{
-				success = g_current_node_state->partitions_owned_map[g_current_node_id]
+				success = g_current_node_state->partitions_owned_map[target_partition]
 					.db->put(device_id, timestamp, expiration, data, data_len);
 			}
 			else
@@ -61,6 +61,8 @@ bool Put(edisense_comms::Member *member, device_t device_id, time_t timestamp, t
 	}
 	g_current_node_state->cluster_members_lock.releaseRDLock(); // 3
 
+	if (!partition_owners_hostnames.empty())
+	{
 	unsigned char *charBuf = (unsigned char*)data;
 	blob dataBlob(charBuf, charBuf + data_len);
 
