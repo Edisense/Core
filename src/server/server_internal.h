@@ -11,7 +11,7 @@
 
 /* Called by other nodes */
 
-class Server : edisense_comms::MemberServer {
+class Server : public edisense_comms::MemberServer {
 
 public:
 

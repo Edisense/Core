@@ -202,6 +202,8 @@ int main(int argc, const char *argv[])
   }
 
   edisense_comms::Member member;
+  Server server;
+  member.start(&server);
 
   if (join)
   {
@@ -227,4 +229,6 @@ int main(int argc, const char *argv[])
 
   gc_thread.join();
 //  rebalance_thread.join();
+
+  member.stop();
 }
