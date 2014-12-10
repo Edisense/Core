@@ -128,6 +128,22 @@ static int ArgPos(const char *str, int argc, const char **argv, bool has_additio
 
 int main(int argc, const char *argv[])
 {
+  if (argc == 1) // print usage instructions
+  {
+    std::cout << "Usage: \n"
+      << "\t--datadir <dirname> REQUIRED [place to store db shards]\n"
+      << "\t--nodestate <filename> REQUIRED [current node state]\n"
+      << "\t--clustermembers <filename> REQUIRED [list of cluster members]\n"
+      << "\t--ownershipmap <filename> REQUIRED [list of partitions owned by current node]\n"
+      << "\t--partitionmap <filename> REQUIRED [mapping of partitions to nodes]\n"
+      << "\t--join OPTIONAL\n"
+      << "\t--recover OPTIONAL\n"
+      << "\t--debug OPTIONAL [start sending fake data to other cluster members]\n"
+//      << "\t--name OPTIONAL [give the node a custom name that can be reached, IP address]"
+      << std::endl;
+      return 0;
+  }
+
   int i;
   bool join = false, recover = false, debug = false;
   if ((i = ArgPos("--datadir", argc, argv, true)) > 0) 

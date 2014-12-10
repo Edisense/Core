@@ -157,8 +157,10 @@ void NodeStateMachine::loadPartitionState(std::string &filename)
 
 		if (tmp_map.find(partition_id) != tmp_map.end())
 		{
-			throw "duplicate partition entry in file";
+			perror("duplicate partition entry in file");
+			exit(1);
 		}
+		pm.pinned = false;
 		tmp_map[partition_id] = pm;
 	}
 	partitions_owned_map = tmp_map;

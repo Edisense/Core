@@ -23,7 +23,7 @@
 
 #include "ble_client_internal.h"
 
-static const std::chrono::milliseconds kPutRequestTimeOut(5000);
+static const std::chrono::milliseconds kPutRequestTimeOut(60000);
 
 bool Put(edisense_comms::Member *member, device_t device_id, time_t timestamp, time_t expiration, void *data, size_t data_len)
 {
@@ -67,7 +67,7 @@ bool Put(edisense_comms::Member *member, device_t device_id, time_t timestamp, t
 		blob dataBlob(charBuf, charBuf + data_len);
 
 		std::future<std::list<std::pair<std::string, PutResult>>> future_result 
-			= member->put(tid, partition_owners_hostnames, device_id, timestamp, expiration, dataBlob);
+			= member->put(g_current_node_id, tid, partition_owners_hostnames, device_id, timestamp, expiration, dataBlob);
 		g_cached_partition_table->lock.releaseRDLock(); // 1
 
 		// wait on the future

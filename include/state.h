@@ -30,6 +30,7 @@ typedef struct PartitionMetadata
 {
 	PartitionDB *db;
 	PartitionState state;
+	bool pinned;
 	node_t other_node; // If state is MIGRATING_*
 } PartitionMetadata;
 

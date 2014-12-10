@@ -88,12 +88,11 @@ void LoadBalanceDaemon(edisense_comms::Member *member, unsigned int freq)
 		// LOG presend
 
 		transaction_t commit_recv_tid = g_current_node_state->getTransactionID();
-		std::future<bool> future_commit_recv; // TODO!!!!!!!!!!!
-		member->commitReceiveRequest(commit_recv_tid, node_hostname, victim_partition);
+		std::future<bool> future_commit_recv;
+		member->commitReceiveRequest(g_current_node_id, commit_recv_tid, node_hostname, victim_partition);
 		std::future_status status = future_commit_recv.wait_for(std::chrono::milliseconds(REMOTE_TIMEOUT));
 		if (status != std::future_status::ready) // must get a reply back to continue
 		{
-//			FreeTransaction(commit_recv_tid);
 			// LOG failure
 			continue;
 		}
@@ -127,11 +126,9 @@ void LoadBalanceDaemon(edisense_comms::Member *member, unsigned int freq)
 		g_current_node_state->cluster_members_lock.releaseRDLock(); // 4
 
 		transaction_t ack_update_tid = g_current_node_state->getTransactionID();
-		std::future<std::list<std::string>> future_ackers;//// TODO!!!!!!!!!!! = SendUpdatePartitionOwner(ack_update_tid,
-		future_ackers = member->updatePartitionOwner(ack_update_tid, hostnames_not_heard_back, node_id, victim_partition);
+		std::future<std::list<std::string>> future_ackers = member->updatePartitionOwner(g_current_node_id, ack_update_tid, hostnames_not_heard_back, node_id, victim_partition);
 
 		future_ackers.wait(); // TODO Should probably validate that the ones we heard back from are everyone
-//		FreeTransaction(ack_update_tid);
 		send_db_thread.join();
 
 		// LOG all acked and transferred
@@ -143,7 +140,7 @@ void LoadBalanceDaemon(edisense_comms::Member *member, unsigned int freq)
 		g_current_node_state->partitions_owned_map_lock.releaseWRLock(); // 3
 
 		transaction_t finalize_transaction_tid; // TODO!!!!!!!!!!!
-		std::future<bool> future_finalize = member->commitAsStableRequest(finalize_transaction_tid, node_hostname, victim_partition);
+		std::future<bool> future_finalize = member->commitAsStableRequest(g_current_node_id, finalize_transaction_tid, node_hostname, victim_partition);
 		future_finalize.wait();
 
 		// LOG complete
