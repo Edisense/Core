@@ -26,7 +26,12 @@
 #define HOST_NAME_MAX 255
 #endif
 
+#define TRACE_ON false
+#define TRACE(x) if(TRACE_ON) printf("%s\n", x);
+
 #define DEBUG(x) printf("%d\n", x);
+
+
 
 static void InitializeState()
 {

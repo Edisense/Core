@@ -3,7 +3,6 @@
 
 #include <list>
 #include <member.h>
-#include <ForceFeedback/ForceFeedback.h>
 
 #include "state.h"
 
