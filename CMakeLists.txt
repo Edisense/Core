@@ -34,7 +34,9 @@ set(CORE_BLE  src/ble/ble_client_internal.h
 set(CORE_DAEMONS  src/daemons/daemons.h
                   src/daemons/daemons.cpp
                   src/daemons/db_file_transfer.h
-                  src/daemons/db_file_transfer.cpp)
+                  src/daemons/db_file_transfer.cpp
+                  src/daemons/rebalance_log.h
+                  src/daemons/rebalance_log.cpp)
 
 set(CORE_SERVER src/server/server_internal.h
                 src/server/server_internal.cpp)

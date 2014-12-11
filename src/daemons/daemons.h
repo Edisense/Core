@@ -2,7 +2,7 @@
 #define DAEMONS_H
 
 // Background thread for initiating donation requests
-void LoadBalanceDaemon(edisense_comms::Member* member, unsigned int freq);
+void LoadBalanceDaemon(edisense_comms::Member* member, unsigned int freq, std::string logfile);
 
 // Background thread for garbage collecting data
 void GarbageCollectDaemon(unsigned int freq);

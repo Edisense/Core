@@ -42,6 +42,8 @@ bool Put(edisense_comms::Member *member, device_t device_id, time_t timestamp, t
 	{
 		if (partition_owners[i] != g_current_node_id)
 		{
+			assert(g_current_node_state->cluster_members.find(partition_owners[i]) 
+				!= g_current_node_state->cluster_members.end());
 			std::string hostname = g_current_node_state->cluster_members[partition_owners[i]];
 			partition_owners_hostnames.push_back(hostname);
 		}

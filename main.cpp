@@ -141,6 +141,7 @@ int main(int argc, const char *argv[])
       << "\t--clustermembers <filename> REQUIRED [list of cluster members]\n"
       << "\t--ownershipmap <filename> REQUIRED [list of partitions owned by current node]\n"
       << "\t--partitionmap <filename> REQUIRED [mapping of partitions to nodes]\n"
+      << "\t--log <filename> REQUIRED [log file for recovery]\n"
       << "\t--join OPTIONAL\n"
       << "\t--recover OPTIONAL\n"
       << "\t--debug OPTIONAL [start sending fake data to other cluster members]\n"
@@ -148,6 +149,8 @@ int main(int argc, const char *argv[])
       << std::endl;
       return 0;
   }
+
+  std::string logfile;
 
   int i;
   bool join = false, recover = false, debug = false;
@@ -161,6 +164,8 @@ int main(int argc, const char *argv[])
     g_owned_partition_state_filename = std::string(argv[i+1]);
   if ((i = ArgPos("--partitionmap", argc, argv, true)) > 0)
     g_cached_partition_map_filename = std::string(argv[i+1]);
+  if ((i = ArgPos("--log", argc, argv, true)) > 0)
+    logfile = std::string(argv[i+1]); 
   if ((i = ArgPos("--join", argc, argv, false)) > 0)
     join = true;
   if ((i = ArgPos("--recover", argc, argv, false)) > 0)
@@ -173,6 +178,7 @@ int main(int argc, const char *argv[])
   std::cout << "Cluster members file : " << g_cluster_member_list_filename << std::endl;
   std::cout << "Ownership map file : " << g_owned_partition_state_filename << std::endl;
   std::cout << "Partition-node map file : " << g_cached_partition_map_filename << std::endl;
+  std::cout << "Log file : " << logfile << std::endl;
 
   if (join && recover)
   {
@@ -205,6 +211,11 @@ int main(int argc, const char *argv[])
     perror("must specify a file for partition map\n");
     exit(0);
   }
+  if (logfile == "")
+  {
+    perror("must specify a file for log\n");
+    exit(0);
+  }
 
   if (join)
   {
@@ -223,7 +234,7 @@ int main(int argc, const char *argv[])
   Server server;
   member.start(&server);
 
-//  std::thread rebalance_thread(LoadBalanceDaemon, &member, 60 * 5); // 5 minutes
+  std::thread rebalance_thread(LoadBalanceDaemon, &member, 60 * 5, logfile); // 5 minutes
   std::thread gc_thread(GarbageCollectDaemon, 60 * 60 * 12); // 12 hrs
   
   if (debug) // simulate data
@@ -236,7 +247,7 @@ int main(int argc, const char *argv[])
   }
 
   gc_thread.join();
-//  rebalance_thread.join();
+  rebalance_thread.join();
 
   member.stop();
 }

@@ -3,12 +3,11 @@
 
 #include <mutex>
 #include <string>
+#include <iostream>
 
 #include "edisense_types.h"
 
 using namespace std;
-
-const string kRecordDelimiter = "|";
 
 class RebalanceLog 
 {
@@ -24,4 +23,4 @@ private:
 	mutex lock;
 };
 
-#endif
+#endif /* REBALANCE_LOG_H */
