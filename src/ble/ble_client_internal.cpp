@@ -42,10 +42,12 @@ bool Put(edisense_comms::Member *member, device_t device_id, time_t timestamp, t
 	{
 		if (partition_owners[i] != g_current_node_id)
 		{
-			partition_owners_hostnames.push_back(g_current_node_state->cluster_members[partition_owners[i]]);
+			std::string hostname = g_current_node_state->cluster_members[partition_owners[i]];
+			partition_owners_hostnames.push_back(hostname);
 		}
 		else // current node owns this partition too
 		{
+			std::cout << "Put: Hey! I own this partition too! " << target_partition << std::endl;
 			g_current_node_state->partitions_owned_map_lock.acquireRDLock(); // 2
 			if (g_current_node_state->partitions_owned_map[target_partition].db)
 			{
@@ -78,7 +80,7 @@ bool Put(edisense_comms::Member *member, device_t device_id, time_t timestamp, t
 		std::list<std::pair<std::string, PutResult>> results = future_result.get();
 
 		// check results of put
-		success &= results.size() == num_replicas;
+		success &= results.size() == partition_owners_hostnames.size();
 		for (auto &kv: results)
 		{
 			success &= (kv.second.status == SUCCESS);
@@ -86,12 +88,15 @@ bool Put(edisense_comms::Member *member, device_t device_id, time_t timestamp, t
 			if (kv.second.status == DATA_MOVED) // update location in partition table
 			{
 				g_cached_partition_table->lock.acquireWRLock(); // 4
-				assert(g_cached_partition_table->updatePartitionOwner(hostToNodeId(kv.first), kv.second.moved_to, target_partition));
+				node_t new_owner = hostToNodeId(kv.first);
+				std::cout << "new owner " << kv.first << std::endl;
+				assert(0);
+				assert(g_cached_partition_table->updatePartitionOwner(new_owner, kv.second.moved_to, target_partition));
 				g_cached_partition_table->lock.releaseWRLock(); // 4
 			} 
 		}
-		return success;
 	}
+	return success;
 }
 
 static const int kSecondsInDay = 60 * 60 * 24;

@@ -31,7 +31,7 @@
 #define REMOTE_TIMEOUT 2000
 
 // minimum load before load balancing
-static const float kLoadBalanceThreshold = 0.8;
+static const float kLoadBalanceThreshold = 0.85;
 
 static const unsigned short kDbFileTransferPort = 5000;
 

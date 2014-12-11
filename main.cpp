@@ -206,10 +206,6 @@ int main(int argc, const char *argv[])
     exit(0);
   }
 
-  edisense_comms::Member member;
-  Server server;
-  member.start(&server);
-
   if (join)
   {
     NOT_IMPLEMENTED
@@ -223,13 +219,20 @@ int main(int argc, const char *argv[])
     InitializeState();
   }
 
+  edisense_comms::Member member;
+  Server server;
+  member.start(&server);
+
 //  std::thread rebalance_thread(LoadBalanceDaemon, &member, 60 * 5); // 5 minutes
   std::thread gc_thread(GarbageCollectDaemon, 60 * 60 * 12); // 12 hrs
   
   if (debug) // simulate data
   {
-    std::thread simulate_put_thread(SimulatePutDaemon, &member,1, 42);
-    simulate_put_thread.detach();
+    for (int j = 42; j < 60; j++)
+    {
+      std::thread simulate_put_thread(SimulatePutDaemon, &member,1, j);
+      simulate_put_thread.detach();
+    }
   }
 
   gc_thread.join();

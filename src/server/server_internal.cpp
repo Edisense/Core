@@ -68,7 +68,7 @@ bool HandleLeaveRequest(MessageId mesg_id) {
   return true;
 }
 
-GetPartitionTableResult HandleGetPartitionTableRequest(void) {
+GetPartitionTableResult HandleGetPartitionTableRequest() {
   GetPartitionTableResult ret;
   g_current_node_state->state_lock.acquireRDLock(); // 1
   if (g_current_node_state->state == NodeState::JOINING) {
@@ -87,6 +87,8 @@ GetPartitionTableResult HandleGetPartitionTableRequest(void) {
   ret.success = true;
   return ret;
 }
+
+
 
 PutResult Server::handlePutRequest(node_t sender, transaction_t tid, device_t deviceId, time_t timestamp, time_t expiry, blob data) {
 
@@ -113,25 +115,53 @@ PutResult Server::handlePutRequest(node_t sender, transaction_t tid, device_t de
   }
 
   if (partition_state.state == PartitionState::STABLE
-      || partition_state.state == PartitionState::RECEIVED) {
+      || partition_state.state == PartitionState::RECEIVED) 
+  {
+    std::cout << "putting into db" << std::endl;
     PartitionDB *db = partition_state.db;
     bool success = db->put(deviceId, timestamp, expiry, &data[0], data.size());
-    if (!success) ret.status = DB_ERROR;
+    if (!success) 
+      ret.status = DB_ERROR;
+    else 
+      success = ret.status = SUCCESS;
   }
   else if (partition_state.state == PartitionState::RECEIVING) // not ready to handle put request yet
   {
+    std::cout << "currently receiving" << std::endl;
     ret.status = DATA_MOVING;
   }
   else // (partition_state.state == PartitionState::DONATING)
   {
+    std::cout << "donating the partition" << std::endl;
     ret.status = DATA_MOVED;
     ret.moved_to = partition_state.other_node;
   }
   g_current_node_state->partitions_owned_map_lock.releaseRDLock(); // 1
 
+  std::cout << "Success: " << (ret.status == SUCCESS) << std::endl;
   return ret;
 }
 
+std::list<std::string> *Server::handleLocateRequest(device_t deviceId)
+{
+  std::list<std::string> *owners = new std::list<std::string>();
+  partition_t partition_to_get_from = g_cached_partition_table->getPartition(hash_integer(deviceId));
+  int num_replicas = g_cached_partition_table->getNumReplicas();
+  g_cached_partition_table->lock.acquireRDLock(); // 1
+  g_current_node_state->cluster_members_lock.acquireRDLock(); // 2
+  node_t *owner_node_ids = g_cached_partition_table->getPartitionOwners(partition_to_get_from);
+
+  // translate node_ids to actual hostnames
+  for (int i = 0; i < num_replicas; i++)
+  {
+    owners->push_back(g_current_node_state->cluster_members[owner_node_ids[i]]);
+  }
+
+  g_current_node_state->cluster_members_lock.releaseRDLock();
+  g_cached_partition_table->lock.releaseRDLock();
+
+  return owners;
+}
 
 GetResult Server::handleGetRequest(transaction_t tid, device_t deviceId, time_t begin, time_t end) {
   GetResult ret;

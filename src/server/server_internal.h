@@ -27,6 +27,7 @@ private:
 
 	virtual bool handleCommitAsStableRequest(node_t sender, transaction_t tid, partition_t partition_id) override;
 
+	virtual std::list<std::string> *handleLocateRequest(device_t deviceId) override;
 };
 
 CanReceiveResult HandleCanReceiveRequest(MessageId mesg_id, partition_t partition_id);
