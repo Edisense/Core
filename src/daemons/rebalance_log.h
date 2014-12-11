@@ -1,9 +1,14 @@
 #ifndef REBALANCE_LOG_H
 #define REBALANCE_LOG_H
 
-#include <thread>
+#include <mutex>
+#include <string>
+
+#include "edisense_types.h"
 
 using namespace std;
+
+const string kRecordDelimiter = "|";
 
 class RebalanceLog 
 {
@@ -15,7 +20,7 @@ public:
 	void logAckedAndTransferred(partition_t partition_id);
 	void logComplete(partition_t partition_id);
 private:
-	ofstream logfile;
+	string filename;
 	mutex lock;
 };
 
