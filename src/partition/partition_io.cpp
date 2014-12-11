@@ -34,7 +34,7 @@ node_t *readPartitionTable(const char *filename,
 	return table;
 }
 
-bool writePartitionTable(const char *filename, partition_t *table,
+bool writePartitionTable(const char *filename, node_t *table,
 	int n_partitions, int n_replicas)
 {
 	int fd = open(filename, O_CREAT | O_WRONLY | O_TRUNC, S_IRWXU | S_IRWXG | S_IRWXO);

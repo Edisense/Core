@@ -28,16 +28,18 @@ private:
 	virtual bool handleCommitAsStableRequest(node_t sender, transaction_t tid, partition_t partition_id) override;
 
 	virtual std::list<std::string> *handleLocateRequest(device_t deviceId) override;
+
+	virtual JoinResult handleJoinRequest(node_t sender, transaction_t tid, std::string &new_node) override;
 };
 
 //CanReceiveResult HandleCanReceiveRequest(MessageId mesg_id, partition_t partition_id);
-std::list<partition_t> HandleJoinRequest(MessageId mesg_id, std::string &new_node);
+// std::list<partition_t> HandleJoinRequest(MessageId mesg_id, std::string &new_node);
 
 bool HandleLeaveRequest(MessageId mesg_id);
 
 /* Called by Monitor -- do not need mesg_id */
 
-GetPartitionTableResult HandleGetPartitionTableRequest();
+// GetPartitionTableResult HandleGetPartitionTableRequest();
 
 #endif /* SERVER_INTERNAL_H */
 

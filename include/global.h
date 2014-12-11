@@ -10,6 +10,8 @@
 // cached hash of current node's hostname
 extern node_t g_current_node_id;
 
+extern std::string g_current_node_hostname;
+
 // data structure to store partitions owned by this node,
 // state of operations, current transaction id, and cluster 
 // members list

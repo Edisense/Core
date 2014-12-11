@@ -14,11 +14,20 @@ static const float kMaximumUtilizationToAcceptDonation = 0.6;
 static const size_t kMinBytesFreeToAcceptDonation = 512 * 1024 * 1024; // 512mb
 
 
-std::list<partition_t> HandleJoinRequest(MessageId mesg_id, std::string &new_node) {
-  assert (g_current_node_id != mesg_id.node_id);
+JoinResult Server::handleJoinRequest(node_t sender, transaction_t tid, std::string &new_node) 
+{
+  std::cout << "handle join request from " << new_node << std::endl; 
+  assert (g_current_node_id != sender);
 
   node_t node_id = hostToNodeId(new_node);
-  assert (node_id == mesg_id.node_id);
+  assert (node_id == sender);
+
+  JoinResult result;
+  result.success = false;
+  if (g_current_node_state->state == NodeState::JOINING)
+  {
+    return result;
+  }
 
   g_current_node_state->cluster_members_lock.acquireWRLock(); // 1
 
@@ -35,17 +44,21 @@ std::list<partition_t> HandleJoinRequest(MessageId mesg_id, std::string &new_nod
   }
 
   // send back the partitions owned by this node
+  result.num_partitions = g_cached_partition_table->getNumPartitions();
+  result.num_replicas = g_cached_partition_table->getNumReplicas();
   g_current_node_state->partitions_owned_map_lock.acquireRDLock(); // 2
-  std::list<partition_t> partitions_owned;
-  for (auto &kv : g_current_node_state->partitions_owned_map) {
-    if (kv.second.state == PartitionState::STABLE) {
-      partitions_owned.push_back(kv.first);
+  for (auto &kv : g_current_node_state->partitions_owned_map) 
+  {
+    if (kv.second.state == PartitionState::STABLE) 
+    {
+      result.partitions.push_back(kv.first);
     }
   }
   g_current_node_state->partitions_owned_map_lock.acquireRDLock(); // 2
 
   g_current_node_state->cluster_members_lock.releaseWRLock(); // 1
-  return partitions_owned;
+  result.success = true;
+  return result;
 }
 
 bool HandleLeaveRequest(MessageId mesg_id) {
@@ -68,30 +81,28 @@ bool HandleLeaveRequest(MessageId mesg_id) {
   return true;
 }
 
-GetPartitionTableResult HandleGetPartitionTableRequest() {
-  GetPartitionTableResult ret;
-  g_current_node_state->state_lock.acquireRDLock(); // 1
-  if (g_current_node_state->state == NodeState::JOINING) {
-    ret.success = false;
-    g_current_node_state->state_lock.releaseRDLock(); // 1
-  }
-  else {
-    g_current_node_state->state_lock.releaseRDLock(); // 1
-  }
+// GetPartitionTableResult HandleGetPartitionTableRequest() {
+//   GetPartitionTableResult ret;
+//   g_current_node_state->state_lock.acquireRDLock(); // 1
+//   if (g_current_node_state->state == NodeState::JOINING) {
+//     ret.success = false;
+//     g_current_node_state->state_lock.releaseRDLock(); // 1
+//   }
+//   else {
+//     g_current_node_state->state_lock.releaseRDLock(); // 1
+//   }
 
-  // don't need partition table read lock since the table request
-  // is a hint for the Monitor
-  ret.num_partitions = g_cached_partition_table->getNumPartitions();
-  ret.num_replicas = g_cached_partition_table->getNumReplicas();
-  ret.partition_table = g_cached_partition_table->getPartitionTable();
-  ret.success = true;
-  return ret;
-}
+//   // don't need partition table read lock since the table request
+//   // is a hint for the Monitor
+//   ret.num_partitions = g_cached_partition_table->getNumPartitions();
+//   ret.num_replicas = g_cached_partition_table->getNumReplicas();
+//   ret.partition_table = g_cached_partition_table->getPartitionTable();
+//   ret.success = true;
+//   return ret;
+// }
 
-
-
-PutResult Server::handlePutRequest(node_t sender, transaction_t tid, device_t deviceId, time_t timestamp, time_t expiry, blob data) {
-
+PutResult Server::handlePutRequest(node_t sender, transaction_t tid, device_t deviceId, time_t timestamp, time_t expiry, blob data) 
+{
   assert (g_current_node_id != sender);
 
   std::cout << "Received put request from " << sender << " : " << deviceId << " (device) " << timestamp
@@ -163,7 +174,8 @@ std::list<std::string> *Server::handleLocateRequest(device_t deviceId)
   return owners;
 }
 
-GetResult Server::handleGetRequest(transaction_t tid, device_t deviceId, time_t begin, time_t end) {
+GetResult Server::handleGetRequest(transaction_t tid, device_t deviceId, time_t begin, time_t end) 
+{
   GetResult ret;
   partition_t partition_to_get_from = g_cached_partition_table->getPartition(hash_integer(deviceId));
 
@@ -199,8 +211,13 @@ GetResult Server::handleGetRequest(transaction_t tid, device_t deviceId, time_t 
   return ret;
 }
 
-bool Server::handleUpdatePartitionOwner(node_t sender, transaction_t tid, node_t newOwner, partition_t partition) {
+bool Server::handleUpdatePartitionOwner(node_t sender, transaction_t tid, node_t newOwner, partition_t partition) 
+{
   assert (g_current_node_id != sender);
+  if (g_current_node_state->state == NodeState::JOINING)
+  {
+    return false;
+  }
 
   bool success;
   g_cached_partition_table->lock.acquireWRLock(); // 1
@@ -209,7 +226,8 @@ bool Server::handleUpdatePartitionOwner(node_t sender, transaction_t tid, node_t
   return success;
 }
 
-CanReceiveResult Server::handleCanReceiveRequest(node_t sender, transaction_t tid, partition_t partition_id) {
+CanReceiveResult Server::handleCanReceiveRequest(node_t sender, transaction_t tid, partition_t partition_id) 
+{
   assert (g_current_node_id != sender);
 
   CanReceiveResult ret;
@@ -244,13 +262,15 @@ CanReceiveResult Server::handleCanReceiveRequest(node_t sender, transaction_t ti
   return ret;
 }
 
-bool Server::handleCommitReceiveRequest(node_t sender, transaction_t tid, partition_t partition_id) {
+bool Server::handleCommitReceiveRequest(node_t sender, transaction_t tid, partition_t partition_id) 
+{
   assert (g_current_node_id != sender);
 
   size_t used = ComputeNodeUtilization(); // TODO what if we over commit?
   size_t free_space = g_local_disk_limit_in_bytes - used;
   float util = free_space / (float) g_local_disk_limit_in_bytes;
-  if (util > kMaximumUtilizationToAcceptDonation || free_space < kMinBytesFreeToAcceptDonation) {
+  if (util > kMaximumUtilizationToAcceptDonation || free_space < kMinBytesFreeToAcceptDonation) 
+  {
     return false;
   }
 
@@ -297,13 +317,15 @@ bool Server::handleCommitReceiveRequest(node_t sender, transaction_t tid, partit
   return true;
 }
 
-bool Server::handleCommitAsStableRequest(node_t sender, transaction_t tid, partition_t partition_id) {
+bool Server::handleCommitAsStableRequest(node_t sender, transaction_t tid, partition_t partition_id) 
+{
   assert (g_current_node_id != sender);
   g_current_node_state->partitions_owned_map_lock.acquireWRLock(); // 1
   // Cannot commit as stable
   if (g_current_node_state->partitions_owned_map.find(partition_id) == g_current_node_state->partitions_owned_map.end() ||
       (g_current_node_state->partitions_owned_map[partition_id].state != PartitionState::RECEIVED
-          && g_current_node_state->partitions_owned_map[partition_id].state != PartitionState::STABLE)) {
+          && g_current_node_state->partitions_owned_map[partition_id].state != PartitionState::STABLE)) 
+  {
     g_current_node_state->partitions_owned_map_lock.releaseWRLock(); // 1
     return false;
   }

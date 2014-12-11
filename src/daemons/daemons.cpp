@@ -103,14 +103,12 @@ static bool PickRecipient(partition_t partition_id, edisense_comms::Member *memb
 	std::future_status status = future_response_1.wait_for(std::chrono::milliseconds(REMOTE_TIMEOUT));
 	if (status != std::future_status::ready) // must get a reply back to continue
 	{
-		// LOG failure
 		return false;
 	}
 
 	status = future_response_2.wait_for(std::chrono::milliseconds(REMOTE_TIMEOUT));
 	if (status != std::future_status::ready) // must get a reply back to continue
 	{
-		// LOG failure
 		return false;
 	}
 

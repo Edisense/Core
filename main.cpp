@@ -8,6 +8,7 @@
 #include <edisense_comms.h>
 #include <member.h>
 #include <sys/stat.h>
+#include "strings.h"
 
 //#include <boost/filesystem.hpp>
 
@@ -16,11 +17,10 @@
 
 #include "server/server_internal.h"
 #include "partition/partition_db.h"
+#include "partition/partition_io.h"
 #include "daemons/daemons.h"
 #include "util/hash.h"
 #include "ble/ble_client_internal.h"
-
-#define NOT_IMPLEMENTED printf("NOT_IMPLEMENTED\n"); exit(0);
 
 #ifndef HOST_NAME_MAX // This variable isn't present in BSD, which means it isn't on OSX either
 #define HOST_NAME_MAX 255
@@ -29,7 +29,137 @@
 #define TRACE_ON false
 #define TRACE(x) if(TRACE_ON) printf("%s\n", x);
 
-static void RecoverState(std::string &logfile)
+static void JoinFinishInit(edisense_comms::Member *comms)
+{
+  std::list<std::string> have_not_acked;
+  g_current_node_state->cluster_members_lock.acquireRDLock();
+  for (auto &kv : g_current_node_state->cluster_members)
+  {
+    if (kv.first != g_current_node_id)
+      have_not_acked.push_back(kv.second);
+  }
+  g_current_node_state->cluster_members_lock.releaseRDLock();
+
+  int num_replicas;
+  int num_partitions;
+  node_t *partition_table = NULL;
+  int *allocated = NULL;
+
+  while (!have_not_acked.empty())
+  {
+    std::string member = have_not_acked.front();
+    have_not_acked.pop_front();
+
+    transaction_t tid = g_current_node_state->getTransactionID();
+    std::future<JoinResult> future_join_response 
+      = comms->sendJoinRequest(g_current_node_id, tid, member, g_current_node_hostname);
+    
+    future_join_response.wait();
+
+    JoinResult result = future_join_response.get();
+
+    if (!result.success)
+    {
+      std::cout << "join failure from " << member << std::endl;
+      have_not_acked.push_back(member);
+    }
+    else
+    {
+      std::cout << "received join success from " << member << std::endl;
+
+      if (!partition_table)
+      {
+        num_partitions = result.num_partitions;
+        num_replicas = result.num_replicas;
+        partition_table = (node_t *)calloc(num_replicas * num_partitions, sizeof(node_t));
+        assert(partition_table);
+        allocated = (int *)calloc(num_partitions, sizeof(int));
+        assert(allocated);
+      }
+
+      assert(result.num_replicas == num_replicas);
+      assert(result.num_partitions == num_partitions);
+
+      for (partition_t pid : result.partitions)
+      {
+        partition_table[pid * num_replicas + allocated[pid]] = hostToNodeId(member);
+        allocated[pid]++;
+        std::cout << "\tadded " << pid << " to " << member << "'s list!" << std::endl;
+        assert(allocated[pid] <= num_replicas);
+      }
+    }
+  }
+
+  assert(writePartitionTable(g_cached_partition_map_filename.c_str(), partition_table,
+    num_partitions, num_replicas));
+
+  g_cached_partition_table = new PartitionTable(g_cached_partition_map_filename);
+
+  free(allocated);
+  free(partition_table);
+
+  g_current_node_state->state = NodeState::STABLE;
+  g_current_node_state->saveNodeState(g_current_node_state_filename);
+
+  std::cout << "successfully joined the cluster!" << std::endl;
+}
+
+static void JoinInitState()
+{
+  g_current_node_state = new NodeStateMachine();
+
+  char hostname[HOST_NAME_MAX + 1]; 
+  if (gethostname(hostname, sizeof(hostname)) != 0)
+  {
+    perror("Unable to gethostname for current machine. Exiting.");
+    exit(1);
+  }
+
+  // print current machine's hostname and id
+  std::cout << "Machine hostname : " << hostname << std::endl;
+  g_current_node_hostname = std::string(hostname);
+  g_current_node_id = hostToNodeId(g_current_node_hostname); // from hash.h
+  std::cout << "Machine node id : " << g_current_node_id << std::endl;
+
+  // database direcory must not exist
+  struct stat stat_database_dir;;
+  if (lstat(g_db_files_dirname.c_str(), &stat_database_dir) == -1) 
+  {
+    std::cout << "DB directory does not exist. Creating it" << std::endl;
+    mkdir(g_db_files_dirname.c_str(), 0700);
+  }
+  else
+  {
+    std::cerr << "DB directory already exists. Perhaps you want to start the machine in recover mode? Fatal error." << std::endl;
+    exit(1); 
+  }
+
+  struct stat stat_cluster_member_list;
+  if (lstat(g_cluster_member_list_filename.c_str(), &stat_cluster_member_list) == -1) 
+  {
+    std::cerr << "Could not stat cluster member list file. Fatal error." << std::endl;
+    exit(1); 
+  }
+
+  g_current_node_state->loadClusterMemberList(g_cluster_member_list_filename);
+  g_current_node_state->cluster_members[g_current_node_id] = g_current_node_hostname;
+
+  // make sure there is no file for partition map, so we can discover it
+  struct stat stat_partition_table_file;
+  if (lstat(g_cached_partition_map_filename.c_str(), &stat_partition_table_file) != -1) 
+  {
+    std::cerr << "Partition-node map file already exists. Fatal error." << std::endl;
+    exit(1); 
+  }
+
+  g_current_node_state->state = NodeState::JOINING;
+
+  g_current_node_state->savePartitionState(g_owned_partition_state_filename);
+  g_current_node_state->saveNodeState(g_current_node_state_filename);
+  g_current_node_state->saveClusterMemberList(g_cluster_member_list_filename);
+}
+
+static void RecoverInitState(std::string &logfile)
 {
   g_current_node_state = new NodeStateMachine();
 
@@ -74,6 +204,8 @@ static void RecoverState(std::string &logfile)
 
   g_current_node_state->loadPartitionState(g_owned_partition_state_filename);
   g_current_node_state->loadNodeState(g_current_node_state_filename);
+
+  std::cout << "done recovering" << std::endl; 
 }
 
 static void InitializeState()
@@ -262,11 +394,11 @@ int main(int argc, const char *argv[])
 
   if (join)
   {
-    NOT_IMPLEMENTED
+    JoinInitState();
   }
   else if (recover)
   {
-    RecoverState(logfile); 
+    RecoverInitState(logfile); 
   }
   else
   {
@@ -277,8 +409,14 @@ int main(int argc, const char *argv[])
   Server server;
   member.start(&server);
 
+  if (join)
+  {
+    JoinFinishInit(&member);
+  }
+
   std::thread rebalance_thread(LoadBalanceDaemon, &member, 60 * 5, logfile); // 5 minutes
   std::thread gc_thread(GarbageCollectDaemon, 60 * 60 * 12); // 12 hrs
+  std::thread db_transfer_thread(DBTransferServerDaemon);
   
   if (debug) // simulate data
   {
@@ -291,6 +429,7 @@ int main(int argc, const char *argv[])
 
   gc_thread.join();
   rebalance_thread.join();
+  db_transfer_thread.join();
 
   member.stop();
 }

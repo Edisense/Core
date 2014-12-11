@@ -3,6 +3,8 @@
 // Id of current node -- computed from hash of hostname
 node_t g_current_node_id;
 
+std::string g_current_node_hostname;
+
 // State of current node
 NodeStateMachine *g_current_node_state;
 

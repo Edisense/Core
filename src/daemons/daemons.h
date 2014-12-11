@@ -10,4 +10,7 @@ void GarbageCollectDaemon(unsigned int freq);
 // Background thread for retrying failed puts
 void RetryPutDaemon(unsigned int freq);
 
+// Separate daemon for receiving db shards
+void DBTransferServerDaemon();
+
 #endif /* DAEMONS_H */
