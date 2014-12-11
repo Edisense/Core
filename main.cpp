@@ -29,9 +29,52 @@
 #define TRACE_ON false
 #define TRACE(x) if(TRACE_ON) printf("%s\n", x);
 
-#define DEBUG(x) printf("%d\n", x);
+static void RecoverState(std::string &logfile)
+{
+  g_current_node_state = new NodeStateMachine();
 
+  char hostname[HOST_NAME_MAX + 1]; 
+  if (gethostname(hostname, sizeof(hostname)) != 0)
+  {
+    perror("Unable to gethostname for current machine. Exiting.");
+    exit(1);
+  }
 
+  // print current machine's hostname and id
+  std::cout << "Machine hostname : " << hostname << std::endl;
+  g_current_node_id = hostToNodeId(std::string(hostname)); // from hash.h
+  std::cout << "Machine node id : " << g_current_node_id << std::endl;
+
+  // database direcory must exist
+  struct stat stat_database_dir;;
+  if (lstat(g_db_files_dirname.c_str(), &stat_database_dir) == -1) 
+  {
+    std::cerr << "DB directory does not exist. Recover failed." << std::endl;
+    exit(0);
+  }
+
+  struct stat stat_cluster_member_list;
+  if (lstat(g_cluster_member_list_filename.c_str(), &stat_cluster_member_list) == -1) 
+  {
+    std::cerr << "Could not stat cluster member list file. Fatal error." << std::endl;
+    exit(1); 
+  }
+
+  g_current_node_state->loadClusterMemberList(g_cluster_member_list_filename);
+
+   // the intial partition map must exist <---------need boost
+  struct stat stat_partition_table_file;
+  if (lstat(g_cached_partition_map_filename.c_str(), &stat_partition_table_file) == -1) 
+  {
+    std::cerr << "Could not stat partition-node map file. Fatal error." << std::endl;
+    exit(1); 
+  }
+
+  g_cached_partition_table = new PartitionTable(g_cached_partition_map_filename);
+
+  g_current_node_state->loadPartitionState(g_owned_partition_state_filename);
+  g_current_node_state->loadNodeState(g_current_node_state_filename);
+}
 
 static void InitializeState()
 {
@@ -48,7 +91,7 @@ static void InitializeState()
   g_current_node_id = hostToNodeId(std::string(hostname)); // from hash.h
   std::cout << "Machine node id : " << g_current_node_id << std::endl;
 
-  // database direcory must exist
+  // database direcory must not exist
   struct stat stat_database_dir;;
   if (lstat(g_db_files_dirname.c_str(), &stat_database_dir) == -1) 
   {
@@ -223,7 +266,7 @@ int main(int argc, const char *argv[])
   }
   else if (recover)
   {
-    NOT_IMPLEMENTED    
+    RecoverState(logfile); 
   }
   else
   {
