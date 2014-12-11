@@ -199,7 +199,6 @@ GetResult Server::handleGetRequest(transaction_t tid, device_t deviceId, time_t 
   return ret;
 }
 
-
 bool Server::handleUpdatePartitionOwner(node_t sender, transaction_t tid, node_t newOwner, partition_t partition) {
   assert (g_current_node_id != sender);
 
