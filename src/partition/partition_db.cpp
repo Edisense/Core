@@ -191,14 +191,13 @@ std::list<Data> * PartitionDB::get(device_t device_id, time_t min_timestamp, tim
 			time_t expiration = sqlite3_column_int(stmt, 3);
 			size_t data_size = sqlite3_column_bytes(stmt, 4);
 			assert(data_size < kMaxDataLen);
-			void const *data = sqlite3_column_blob(stmt, 4);
+			char const *data = static_cast<char const *>(sqlite3_column_blob(stmt, 4));
 
 			Data d;
 			d.timestamp = timestamp;
 			d.expiration = expiration;
-			d.datalen = data_size;
-			memcpy(&d.data, data, data_size);
-
+                        blob point(data, data + data_size);
+			d.data = point;
 			ret->push_back(d);
 		}
 		else if (result == SQLITE_BUSY)
@@ -292,5 +291,4 @@ long long PartitionDB::size(void)
 	}
 	return sb.st_size;
 }
-
 
