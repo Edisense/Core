@@ -27,7 +27,9 @@ static inline unsigned int hash_integer(int n)
 
 static inline node_t hostToNodeId(const std::string &host)
 {
-  return (node_t) hash_string(host.c_str());
+  // TODO Limit stripping of hostnames to .local
+  std::string strippedHost = host.substr(0, host.rfind("."));
+  return (node_t) hash_string(strippedHost.c_str());
 }
 
 
