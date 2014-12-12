@@ -11,7 +11,7 @@ NodeStateMachine *g_current_node_state;
 // Mapping of partitions to owners
 PartitionTable *g_cached_partition_table;
 
-size_t g_local_disk_limit_in_bytes;
+uint64_t g_local_disk_limit_in_bytes;
 
 // Files used by Edisense
 
