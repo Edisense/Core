@@ -7,7 +7,7 @@
 
 #include "global.h"
 
-static size_t ComputeNodeUtilization()
+static uint64_t ComputeNodeUtilization()
 {
 	DIR *d = opendir(g_db_files_dirname.c_str());
 	if (!d) 
@@ -15,7 +15,7 @@ static size_t ComputeNodeUtilization()
 		throw "error openning db shards directory";
 	}
 
-	size_t used = 0;
+	uint64_t used = 0;
 	struct dirent *de;
 	for (de = readdir(d); de != NULL; de = readdir(d))
 	{

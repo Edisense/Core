@@ -11,7 +11,7 @@
 
 
 static const float kMaximumUtilizationToAcceptDonation = 0.6;
-static const size_t kMinBytesFreeToAcceptDonation = 512 * 1024 * 1024; // 512mb
+static const size_t kMinBytesFreeToAcceptDonation = 64 * 1024 * 1024; // 512mb
 
 
 JoinResult Server::handleJoinRequest(node_t sender, transaction_t tid, std::string &new_node) 
@@ -33,7 +33,7 @@ JoinResult Server::handleJoinRequest(node_t sender, transaction_t tid, std::stri
 
   // handle already joined case
   if (g_current_node_state->cluster_members.find(node_id)
-      == g_current_node_state->cluster_members.end()) {
+      != g_current_node_state->cluster_members.end()) {
     std::cout << new_node << " " << node_id << " already joined!" << std::endl;
   }
   else // allow new node to join the cluster
@@ -176,6 +176,8 @@ std::list<std::string> *Server::handleLocateRequest(device_t deviceId)
 
 GetResult Server::handleGetRequest(transaction_t tid, device_t deviceId, time_t begin, time_t end) 
 {
+  std::cout << "handle get request on " << deviceId << std::endl;
+
   GetResult ret;
   partition_t partition_to_get_from = g_cached_partition_table->getPartition(hash_integer(deviceId));
 
@@ -230,11 +232,14 @@ CanReceiveResult Server::handleCanReceiveRequest(node_t sender, transaction_t ti
 {
   assert (g_current_node_id != sender);
 
+  std::cout << "received CanReceive request from " << sender << " due to utilization" << std::endl;
   CanReceiveResult ret;
-  size_t used = ComputeNodeUtilization();
+  uint64_t used = ComputeNodeUtilization();
   ret.free = g_local_disk_limit_in_bytes - used;
-  ret.util = ret.free / (float) g_local_disk_limit_in_bytes;
-  if (ret.util > kMaximumUtilizationToAcceptDonation || ret.free < kMinBytesFreeToAcceptDonation) {
+  ret.util = used / (float) g_local_disk_limit_in_bytes;
+  if (ret.util > kMaximumUtilizationToAcceptDonation || ret.free < kMinBytesFreeToAcceptDonation) 
+  {
+    std::cout << "reject can receive request from " << sender << " due to node state" << std::endl;
     ret.can_recv = false;
     return ret;
   }
@@ -242,6 +247,7 @@ CanReceiveResult Server::handleCanReceiveRequest(node_t sender, transaction_t ti
   // don't need the state lock since it is a hint
   if (g_current_node_state->state != NodeState::STABLE) // can only accept if stable
   {
+    std::cout << "reject can receive request from " << sender << " due to already owned" <<  std::endl;
     ret.can_recv = false;
     return ret;
   }
@@ -250,6 +256,7 @@ CanReceiveResult Server::handleCanReceiveRequest(node_t sender, transaction_t ti
   if (g_current_node_state->partitions_owned_map.find(partition_id)
       != g_current_node_state->partitions_owned_map.end()) // check if storing partition already
   {
+    std::cout << "reject can receive request from " << sender << " due to already owned" << std::endl;
     ret.can_recv = false;
     g_current_node_state->partitions_owned_map_lock.releaseRDLock(); // 1
     return ret;
@@ -258,6 +265,7 @@ CanReceiveResult Server::handleCanReceiveRequest(node_t sender, transaction_t ti
     g_current_node_state->partitions_owned_map_lock.releaseRDLock(); // 1
   }
 
+  std::cout << "accept can receive request from " << sender << std::endl;
   ret.can_recv = true;
   return ret;
 }
@@ -266,17 +274,21 @@ bool Server::handleCommitReceiveRequest(node_t sender, transaction_t tid, partit
 {
   assert (g_current_node_id != sender);
 
+
+
   size_t used = ComputeNodeUtilization(); // TODO what if we over commit?
   size_t free_space = g_local_disk_limit_in_bytes - used;
-  float util = free_space / (float) g_local_disk_limit_in_bytes;
+  float util = used / (float) g_local_disk_limit_in_bytes;
   if (util > kMaximumUtilizationToAcceptDonation || free_space < kMinBytesFreeToAcceptDonation) 
   {
+    std::cout << "reject commit receive request from " << sender << " due to utilization" << std::endl;
     return false;
   }
 
   g_current_node_state->state_lock.acquireRDLock(); // 1
   if (g_current_node_state->state != NodeState::STABLE) // can only accept if stable
   {
+    std::cout << "reject commit receive request from " << sender << " due to node state" << std::endl;
     g_current_node_state->state_lock.releaseRDLock(); // 1
     return false;
   }
@@ -293,6 +305,7 @@ bool Server::handleCommitReceiveRequest(node_t sender, transaction_t tid, partit
     }
     else // already own or receiving the partition from another source
     {
+      std::cout << "reject commit receive request from " << sender << " due to already owned" << std::endl;
       g_current_node_state->partitions_owned_map_lock.releaseWRLock(); // 2
       g_current_node_state->state_lock.releaseRDLock(); // 1
       return false;
@@ -309,6 +322,8 @@ bool Server::handleCommitReceiveRequest(node_t sender, transaction_t tid, partit
   }
   g_current_node_state->partitions_owned_map_lock.releaseWRLock(); // 2
   g_current_node_state->state_lock.releaseRDLock(); // 1
+
+  std::cout << "accept commit receive request from " << sender << std::endl;
 
   // update cached partition to node mapping
   g_cached_partition_table->lock.acquireWRLock();

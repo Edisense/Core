@@ -32,9 +32,6 @@ private:
 	virtual JoinResult handleJoinRequest(node_t sender, transaction_t tid, std::string &new_node) override;
 };
 
-//CanReceiveResult HandleCanReceiveRequest(MessageId mesg_id, partition_t partition_id);
-// std::list<partition_t> HandleJoinRequest(MessageId mesg_id, std::string &new_node);
-
 bool HandleLeaveRequest(MessageId mesg_id);
 
 /* Called by Monitor -- do not need mesg_id */

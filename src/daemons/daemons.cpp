@@ -48,10 +48,21 @@ static bool PickVictimPartition(partition_t *ret)
 {
 	// choose partition to try to donate
 	g_current_node_state->partitions_owned_map_lock.acquireWRLock(); // 1
-	int random_elem = rand() % g_current_node_state->partitions_owned_map.size();
+
+	int partitions_owned = g_current_node_state->partitions_owned_map.size();
+	if (partitions_owned == 0)
+	{
+		g_current_node_state->partitions_owned_map_lock.releaseWRLock();
+		return false;
+	}
+
+	int random_elem = rand() % partitions_owned;
 	auto it = g_current_node_state->partitions_owned_map.begin();
 	std::advance(it, random_elem);
 	*ret = it->first; // select a partition to try to move away
+
+	std::cout << *ret << std::endl;  
+
 	PartitionMetadata *pm = &it->second;
 	if (pm->state != PartitionState::STABLE || pm->pinned) // if the partition is not stable, fail the donate
 	{
@@ -81,17 +92,30 @@ static bool PickRecipient(partition_t partition_id, edisense_comms::Member *memb
 {
 	int random_elem;
 	g_current_node_state->cluster_members_lock.acquireRDLock(); // 2
-	random_elem = rand() % g_current_node_state->cluster_members.size();
-	auto it1 = g_current_node_state->cluster_members.begin();
-	std::advance(it1, random_elem);
-	node_t node_id_1 = it1->first;
-	std::string node_hostname_1 = it1->second;
+	node_t node_id_1;
+	std::string node_hostname_1;
+	do 
+	{
+		random_elem = rand() % g_current_node_state->cluster_members.size();
+		auto it = g_current_node_state->cluster_members.begin();
+		std::advance(it, random_elem);
+		node_id_1 = it->first;
+	 	node_hostname_1 = it->second;
+	}
+	while (node_id_1 == g_current_node_id);
 
-	random_elem = rand() % g_current_node_state->cluster_members.size();
-	auto it2 = g_current_node_state->cluster_members.begin();
-	std::advance(it2, random_elem);
-	node_t node_id_2 = it2->first;
-	std::string node_hostname_2 = it2->second;
+	node_t node_id_2;
+	std::string node_hostname_2;
+	do 
+	{
+		random_elem = rand() % g_current_node_state->cluster_members.size();
+		auto it = g_current_node_state->cluster_members.begin();
+		std::advance(it, random_elem);
+		node_id_2 = it->first;
+	 	node_hostname_2 = it->second;
+	}
+	while (node_id_2 == g_current_node_id);
+
 	g_current_node_state->cluster_members_lock.releaseRDLock(); // 2
 
 	transaction_t tid1 = g_current_node_state->getTransactionID();
@@ -103,12 +127,14 @@ static bool PickRecipient(partition_t partition_id, edisense_comms::Member *memb
 	std::future_status status = future_response_1.wait_for(std::chrono::milliseconds(REMOTE_TIMEOUT));
 	if (status != std::future_status::ready) // must get a reply back to continue
 	{
+		std::cout << node_hostname_1 << "timed out" << std::endl;
 		return false;
 	}
 
 	status = future_response_2.wait_for(std::chrono::milliseconds(REMOTE_TIMEOUT));
 	if (status != std::future_status::ready) // must get a reply back to continue
 	{
+		std::cout << node_hostname_2 << "timed out" << std::endl;
 		return false;
 	}
 
@@ -133,6 +159,7 @@ static bool PickRecipient(partition_t partition_id, edisense_comms::Member *memb
 	}
 	else
 	{
+		std::cout << "donate rejected" << std::endl;
 		success = false;
 	}
 	return success;
@@ -171,7 +198,11 @@ void LoadBalanceDaemon(edisense_comms::Member *member, unsigned int freq, std::s
 		// choose partition to try to donate
 		std::cout << "picking partition to donate" << std::endl;
 		partition_t victim_partition;
-		if (!PickVictimPartition(&victim_partition)) continue;
+		if (!PickVictimPartition(&victim_partition)) 
+		{	
+			std::cout << "failed to pick victim partition" << std::endl;
+			continue;
+		}
 
 		std::cout << "picking recipient" << std::endl;
 		node_t receiving_node_id;

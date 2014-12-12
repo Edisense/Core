@@ -22,7 +22,7 @@ extern NodeStateMachine *g_current_node_state;
 extern PartitionTable *g_cached_partition_table;
 
 // maximimum amount of storage that Edisense can use
-extern size_t g_local_disk_limit_in_bytes;
+extern uint64_t g_local_disk_limit_in_bytes;
 
 // directory containing the db shards
 extern std::string g_db_files_dirname;

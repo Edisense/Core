@@ -172,7 +172,9 @@ bool SendDBFile(int sockfd, const std::string &hostname, const std::string &file
 	FILE *fh = fopen(filename.c_str(), "rb");
 	if (!fh)
 	{
-		throw "could not open db file for transfer";
+		perror("could not open db file for transfer");
+        return false;
 	}
+    fclose(fh);
 	return sendfile(sockfd, partition_id, fh);
 }

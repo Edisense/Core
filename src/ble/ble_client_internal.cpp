@@ -86,13 +86,12 @@ bool Put(edisense_comms::Member *member, device_t device_id, time_t timestamp, t
 		for (auto &kv: results)
 		{
 			success &= (kv.second.status == SUCCESS);
-			assert(kv.second.status != DATA_NOT_OWNED); // this would mean we are fundamentally inconsistent
+			assert(kv.second.status != DATA_NOT_OWNED); 
 			if (kv.second.status == DATA_MOVED) // update location in partition table
 			{
 				g_cached_partition_table->lock.acquireWRLock(); // 4
 				node_t new_owner = hostToNodeId(kv.first);
 				std::cout << "new owner " << kv.first << std::endl;
-				assert(0);
 				assert(g_cached_partition_table->updatePartitionOwner(new_owner, kv.second.moved_to, target_partition));
 				g_cached_partition_table->lock.releaseWRLock(); // 4
 			} 

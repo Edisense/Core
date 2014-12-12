@@ -274,6 +274,7 @@ static void InitializeState()
         PartitionMetadata pm;
         pm.db = new PartitionDB(GetPartitionDBFilename(partition_id));
         pm.state = PartitionState::STABLE;
+        pm.pinned = false;
 
         g_current_node_state->partitions_owned_map[partition_id] = pm;
       }
@@ -320,6 +321,7 @@ int main(int argc, const char *argv[])
       << "\t--join OPTIONAL\n"
       << "\t--recover OPTIONAL\n"
       << "\t--debug OPTIONAL [start sending fake data to other cluster members]\n"
+      << "\t--size OPTIONAL [mbytes]"
 //      << "\t--name OPTIONAL [give the node a custom name that can be reached, IP address]"
       << std::endl;
       return 0;
@@ -347,6 +349,10 @@ int main(int argc, const char *argv[])
     recover = true;
   if ((i = ArgPos("--debug", argc, argv, false)) > 0)
     debug = true;
+  if ((i = ArgPos("--size", argc, argv, true)) > 0)
+    g_local_disk_limit_in_bytes = atoi(argv[i+1]) * 1024 * 1024;
+  else
+    g_local_disk_limit_in_bytes = 512 * 1024 * 1024;
 
   std::cout << "DB directory : " << g_db_files_dirname << std::endl;
   std::cout << "Node state file : " << g_current_node_state_filename << std::endl;
@@ -414,13 +420,13 @@ int main(int argc, const char *argv[])
     JoinFinishInit(&member);
   }
 
-  std::thread rebalance_thread(LoadBalanceDaemon, &member, 60 * 5, logfile); // 5 minutes
+  std::thread rebalance_thread(LoadBalanceDaemon, &member, 5 * 60, logfile); // 5 minutes
   std::thread gc_thread(GarbageCollectDaemon, 60 * 60 * 12); // 12 hrs
   std::thread db_transfer_thread(DBTransferServerDaemon);
   
   if (debug) // simulate data
   {
-    for (int j = 42; j < 60; j++)
+    for (int j = 1; j <= 50; j++)
     {
       std::thread simulate_put_thread(SimulatePutDaemon, &member,1, j);
       simulate_put_thread.detach();
