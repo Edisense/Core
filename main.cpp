@@ -420,7 +420,8 @@ int main(int argc, const char *argv[])
     JoinFinishInit(&member);
   }
 
-  std::thread rebalance_thread(LoadBalanceDaemon, &member, 5 * 60, logfile); // 5 minutes
+  std::thread async_put_thread(RetryPutDaemon, &member, 15); // 15 seconds
+  std::thread rebalance_thread(LoadBalanceDaemon, &member, 60, logfile, recover); // 1 minutes
   std::thread gc_thread(GarbageCollectDaemon, 60 * 60 * 12); // 12 hrs
   std::thread db_transfer_thread(DBTransferServerDaemon);
   
@@ -428,7 +429,7 @@ int main(int argc, const char *argv[])
   {
     for (int j = 1; j <= 50; j++)
     {
-      std::thread simulate_put_thread(SimulatePutDaemon, &member,1, j);
+      std::thread simulate_put_thread(SimulatePutDaemon, &member, 1, j);
       simulate_put_thread.detach();
     }
   }
@@ -436,6 +437,7 @@ int main(int argc, const char *argv[])
   gc_thread.join();
   rebalance_thread.join();
   db_transfer_thread.join();
+  async_put_thread.join();
 
   member.stop();
 }

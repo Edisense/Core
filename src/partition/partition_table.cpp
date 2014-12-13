@@ -20,8 +20,8 @@ PartitionTable::PartitionTable(std::string filename)
 		perror("failed to read partition table");
 		exit(1);
 	}
-//	for (int i =0 ; i < n_partitions * n_replicas; i++)
-//		printf("%d %d : %d\n", i/n_replicas, i %n_replicas, partition_to_nodes[i]);
+	// for (int i =0 ; i < n_partitions * n_replicas; i++)
+	// 	printf("%d %d : %d\n", i/n_replicas, i %n_replicas, partition_to_nodes[i]);
 }
 
 PartitionTable::~PartitionTable()

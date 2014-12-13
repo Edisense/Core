@@ -7,6 +7,7 @@
 #include <chrono>
 #include <iostream>
 #include <unistd.h>
+#include <mutex>
 
 #include "global.h"
 #include "state.h"
@@ -42,6 +43,7 @@ bool Put(edisense_comms::Member *member, device_t device_id, time_t timestamp, t
 	{
 		if (partition_owners[i] != g_current_node_id)
 		{
+			std::cout << partition_owners[i] << std::endl;
 			assert(g_current_node_state->cluster_members.find(partition_owners[i]) 
 				!= g_current_node_state->cluster_members.end());
 			std::string hostname = g_current_node_state->cluster_members[partition_owners[i]];
@@ -64,6 +66,7 @@ bool Put(edisense_comms::Member *member, device_t device_id, time_t timestamp, t
 		}
 	}
 	g_current_node_state->cluster_members_lock.releaseRDLock(); // 3
+	g_cached_partition_table->lock.releaseRDLock(); // 1
 
 	if (!partition_owners_hostnames.empty())
 	{
@@ -72,7 +75,6 @@ bool Put(edisense_comms::Member *member, device_t device_id, time_t timestamp, t
 
 		std::future<std::list<std::pair<std::string, PutResult>>> future_result 
 			= member->put(g_current_node_id, tid, partition_owners_hostnames, device_id, timestamp, expiration, dataBlob);
-		g_cached_partition_table->lock.releaseRDLock(); // 1
 
 		// wait on the future
 		if (future_result.wait_for(kPutRequestTimeOut) != std::future_status::ready)
@@ -86,7 +88,10 @@ bool Put(edisense_comms::Member *member, device_t device_id, time_t timestamp, t
 		for (auto &kv: results)
 		{
 			success &= (kv.second.status == SUCCESS);
-			assert(kv.second.status != DATA_NOT_OWNED); 
+			if (kv.second.status == DATA_NOT_OWNED)
+			{
+				std::cout << "data not owned by " << kv.first << std::endl;
+			}
 			if (kv.second.status == DATA_MOVED) // update location in partition table
 			{
 				g_cached_partition_table->lock.acquireWRLock(); // 4
@@ -97,8 +102,21 @@ bool Put(edisense_comms::Member *member, device_t device_id, time_t timestamp, t
 			} 
 		}
 	}
+
 	return success;
 }
+
+typedef struct FailedPut 
+{
+	device_t device_id;
+	time_t timestamp;
+	time_t expiration;
+	char buf[kMaxDataLen];
+	uint8_t buflen;
+} FailedPut;
+
+static std::mutex async_put_queue_lock;
+static std::list<FailedPut> async_put_queue;
 
 static const int kSecondsInDay = 60 * 60 * 24;
 void SimulatePutDaemon(edisense_comms::Member *member, unsigned int freq, device_t device_id)
@@ -116,22 +134,70 @@ void SimulatePutDaemon(edisense_comms::Member *member, unsigned int freq, device
 			std::cout << "Put successful: " << device_id << " (device) " << timestamp 
 				<< " (timestamp) " << expiration << " (expiry) " << counter << " (value)"
 				<< std::endl;
-			counter++;
-			time_t new_timestamp;
-			time(&new_timestamp);
-			do 
-			{
-				time(&new_timestamp);
-			}
-			while (new_timestamp <= timestamp); // make sure timestamps do not conflict
-			timestamp = new_timestamp;
-			expiration = timestamp + kSecondsInDay;
 		}
 		else
 		{
 			std::cout << "Put failed: " << device_id << " (device) " << timestamp 
 				<< " (timestamp) " << expiration << " (expiry) " << counter << " (value)"
+				<< " [moving to async]" << std::endl;
+			FailedPut fp;
+			fp.device_id = device_id;
+			fp.timestamp = timestamp;
+			fp.expiration = expiration;
+			*(fp.buf) = counter;
+			fp.buflen = sizeof(unsigned long long);
+
+			async_put_queue_lock.lock();
+			async_put_queue.push_back(fp);
+			async_put_queue_lock.unlock();
+		}
+
+		counter++;
+		time_t new_timestamp;
+		time(&new_timestamp);
+		do 
+		{
+			time(&new_timestamp);
+		}
+		while (new_timestamp <= timestamp); // make sure timestamps do not conflict
+		timestamp = new_timestamp;
+		expiration = timestamp + kSecondsInDay;
+	}
+}
+
+void RetryPutDaemon(edisense_comms::Member *member, unsigned int freq)
+{
+	while (true)
+	{
+		sleep(freq);
+		FailedPut fp; 
+		async_put_queue_lock.lock();
+		if (async_put_queue.empty())
+		{
+			async_put_queue_lock.unlock();
+			continue;
+		}
+		else
+		{	
+			fp = async_put_queue.front();
+			async_put_queue.pop_front();
+			async_put_queue_lock.unlock();
+		}
+
+		if (Put(member, fp.device_id, fp.timestamp, fp.expiration, fp.buf, fp.buflen))
+		{
+			std::cout << "Async put successful: " << fp.device_id << " (device) " << fp.timestamp 
+				<< " (timestamp) " << fp.expiration << " (expiry) " 
 				<< std::endl;
+		}
+		else
+		{
+			std::cout << "Asyc put failed: " << fp.device_id << " (device) " << fp.timestamp 
+				<< " (timestamp) " << fp.expiration << " (expiry) "
+				<< " [appending to list]" << std::endl;
+			async_put_queue_lock.lock();
+			async_put_queue.push_back(fp);
+			async_put_queue_lock.unlock();
 		}
 	}
 }

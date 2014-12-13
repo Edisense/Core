@@ -7,4 +7,7 @@ bool Put(edisense_comms::Member *member, device_t device_id, time_t timestamp, t
 
 void SimulatePutDaemon(edisense_comms::Member *member, unsigned int freq, device_t device_id);
 
+// Background thread for retrying failed puts
+void RetryPutDaemon(edisense_comms::Member *member, unsigned int freq);
+
 #endif /* BLE_CLIENT_INTERNAL_H */

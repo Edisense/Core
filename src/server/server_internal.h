@@ -30,13 +30,11 @@ private:
 	virtual std::list<std::string> *handleLocateRequest(device_t deviceId) override;
 
 	virtual JoinResult handleJoinRequest(node_t sender, transaction_t tid, std::string &new_node) override;
+
+	virtual bool handleLeaveRequest(node_t sender, transaction_t tid);
 };
 
-bool HandleLeaveRequest(MessageId mesg_id);
 
-/* Called by Monitor -- do not need mesg_id */
-
-// GetPartitionTableResult HandleGetPartitionTableRequest();
 
 #endif /* SERVER_INTERNAL_H */
 

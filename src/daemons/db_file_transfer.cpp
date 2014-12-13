@@ -8,6 +8,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <algorithm>
+#include <iostream>
 
 #include "global.h"
 #include "state.h"
@@ -48,9 +49,13 @@ static bool sendfile(int sock, long partition_id, FILE *f)
     long filesize = ftell(f);
     rewind(f);
     if (filesize == EOF)
+    {
         return false;
-    if (!sendlong(sock, filesize))
+    }
+    if (!sendlong(sock, partition_id))
+    {
         return false;
+    }
     if (!sendlong(sock, filesize))
         return false;
     if (filesize > 0)
@@ -61,9 +66,13 @@ static bool sendfile(int sock, long partition_id, FILE *f)
             size_t num = std::min<long int>(filesize, sizeof(buffer));
             num = fread(buffer, 1, num, f);
             if (num < 1)
+            {
                 return false;
+            }
             if (!senddata(sock, buffer, num))
+            {
                 return false;
+            }
             filesize -= num;
         }
         while (filesize > 0);
@@ -83,7 +92,9 @@ static bool readdata(int sock, void *buf, int buflen)
             return false;
         }
         else if (num == 0)
+        {
             return false;
+        }
 
         pbuf += num;
         buflen -= num;
@@ -95,7 +106,9 @@ static bool readdata(int sock, void *buf, int buflen)
 static bool readlong(int sock, long *value)
 {
     if (!readdata(sock, value, sizeof(value)))
+    {
         return false;
+    }
     *value = ntohl(*value);
     return true;
 }
@@ -106,10 +119,14 @@ static long readfile(int sock, FILE *f)
 {
 	long partition_id;
 	if (!readlong(sock, &partition_id))
+    {
         return kReadFileFailure;
+    }
     long filesize;
     if (!readlong(sock, &filesize))
+    {
         return kReadFileFailure;
+    }
     if (filesize > 0)
     {
         char buffer[1024];
@@ -117,13 +134,17 @@ static long readfile(int sock, FILE *f)
         {
             int num = std::min<long int>(filesize, sizeof(buffer));
             if (!readdata(sock, buffer, num))
+            {
                 return kReadFileFailure;
+            }
             int offset = 0;
             do
             {
                 size_t written = fwrite(&buffer[offset], 1, num-offset, f);
                 if (written < 1)
+                {
                     return kReadFileFailure;
+                }
                 offset += written;
             }
             while (offset < num);
@@ -136,18 +157,22 @@ static long readfile(int sock, FILE *f)
 
 bool ReceiveDBFile(int sockfd)
 {
+    std::cout << "receiving db file" << std::endl;
 	std::string tmp_file = "db_transfer.tmp";
 	FILE *fh = fopen(tmp_file.c_str(), "wb");
 	long partition_id_long = readfile(sockfd, fh);
 	fclose(fh);
 	if (partition_id_long == kReadFileFailure)
 	{
+        perror("could not receceive db file");
 		return false;
 	}
 
 	partition_t partition_id = (partition_t) partition_id_long;
 	std::string partition_filename = GetPartitionDBFilename(partition_id);
 	
+    std::cout << "receiving db file for " << partition_id << std::endl;
+
     g_current_node_state->partitions_owned_map_lock.acquireWRLock(); // 1
 	assert(g_current_node_state->partitions_owned_map.find(partition_id) 
 		!= g_current_node_state->partitions_owned_map.end()); // we're actually supposed to receive this partition
@@ -162,7 +187,7 @@ bool ReceiveDBFile(int sockfd)
 		g_current_node_state->savePartitionState(g_owned_partition_state_filename);
 	}
 	g_current_node_state->partitions_owned_map_lock.releaseWRLock(); // 1
-
+    std::cout << "done receiving db file for " << partition_id << std::endl;
 	return true;
 }
 
@@ -170,11 +195,14 @@ bool SendDBFile(int sockfd, const std::string &hostname, const std::string &file
 {
 	long partition_id_long = partition_id;
 	FILE *fh = fopen(filename.c_str(), "rb");
+    std::cout << "sending db file" << std::endl;
 	if (!fh)
 	{
 		perror("could not open db file for transfer");
         return false;
 	}
+    bool success = sendfile(sockfd, partition_id, fh);
+    std::cout << "send db file result " << success << std::endl;
     fclose(fh);
-	return sendfile(sockfd, partition_id, fh);
+    return success;
 }

@@ -61,45 +61,25 @@ JoinResult Server::handleJoinRequest(node_t sender, transaction_t tid, std::stri
   return result;
 }
 
-bool HandleLeaveRequest(MessageId mesg_id) {
-  assert (g_current_node_id != mesg_id.node_id);
+bool Server::handleLeaveRequest(node_t sender, transaction_t tid) {
+  assert (g_current_node_id != sender);
 
   g_current_node_state->cluster_members_lock.acquireWRLock(); // 1
   // handle already left case
-  if (g_current_node_state->cluster_members.find(mesg_id.node_id)
+  if (g_current_node_state->cluster_members.find(sender)
       == g_current_node_state->cluster_members.end()) {
-    std::cout << mesg_id.node_id << " already left!" << std::endl;
+    std::cout << sender << " already left!" << std::endl;
   }
   else // remove the node from the cluster
   {
-    g_current_node_state->cluster_members.erase(mesg_id.node_id);
+    g_current_node_state->cluster_members.erase(sender);
     g_current_node_state->saveClusterMemberList(g_cluster_member_list_filename);
-    std::cout << mesg_id.node_id << " left cluster!" << std::endl;
+    std::cout << sender << " left cluster!" << std::endl;
   }
   g_current_node_state->cluster_members_lock.releaseWRLock(); // 1
 
   return true;
 }
-
-// GetPartitionTableResult HandleGetPartitionTableRequest() {
-//   GetPartitionTableResult ret;
-//   g_current_node_state->state_lock.acquireRDLock(); // 1
-//   if (g_current_node_state->state == NodeState::JOINING) {
-//     ret.success = false;
-//     g_current_node_state->state_lock.releaseRDLock(); // 1
-//   }
-//   else {
-//     g_current_node_state->state_lock.releaseRDLock(); // 1
-//   }
-
-//   // don't need partition table read lock since the table request
-//   // is a hint for the Monitor
-//   ret.num_partitions = g_cached_partition_table->getNumPartitions();
-//   ret.num_replicas = g_cached_partition_table->getNumReplicas();
-//   ret.partition_table = g_cached_partition_table->getPartitionTable();
-//   ret.success = true;
-//   return ret;
-// }
 
 PutResult Server::handlePutRequest(node_t sender, transaction_t tid, device_t deviceId, time_t timestamp, time_t expiry, blob data) 
 {
@@ -215,6 +195,7 @@ GetResult Server::handleGetRequest(transaction_t tid, device_t deviceId, time_t 
 
 bool Server::handleUpdatePartitionOwner(node_t sender, transaction_t tid, node_t newOwner, partition_t partition) 
 {
+  std::cout << "handle update partition owner for " << partition << " new owner " << newOwner << " old owner " << sender << std::endl;
   assert (g_current_node_id != sender);
   if (g_current_node_state->state == NodeState::JOINING)
   {
@@ -232,14 +213,14 @@ CanReceiveResult Server::handleCanReceiveRequest(node_t sender, transaction_t ti
 {
   assert (g_current_node_id != sender);
 
-  std::cout << "received CanReceive request from " << sender << " due to utilization" << std::endl;
+  std::cout << "received CanReceive request from " << sender << std::endl;
   CanReceiveResult ret;
   uint64_t used = ComputeNodeUtilization();
   ret.free = g_local_disk_limit_in_bytes - used;
   ret.util = used / (float) g_local_disk_limit_in_bytes;
   if (ret.util > kMaximumUtilizationToAcceptDonation || ret.free < kMinBytesFreeToAcceptDonation) 
   {
-    std::cout << "reject can receive request from " << sender << " due to node state" << std::endl;
+    std::cout << "reject can receive request " << partition_id << " from " << sender << " due to utilization" << std::endl;
     ret.can_recv = false;
     return ret;
   }
@@ -247,7 +228,7 @@ CanReceiveResult Server::handleCanReceiveRequest(node_t sender, transaction_t ti
   // don't need the state lock since it is a hint
   if (g_current_node_state->state != NodeState::STABLE) // can only accept if stable
   {
-    std::cout << "reject can receive request from " << sender << " due to already owned" <<  std::endl;
+    std::cout << "reject can receive request " << partition_id << " from " << sender << " due to node state" << std::endl;
     ret.can_recv = false;
     return ret;
   }
@@ -256,7 +237,7 @@ CanReceiveResult Server::handleCanReceiveRequest(node_t sender, transaction_t ti
   if (g_current_node_state->partitions_owned_map.find(partition_id)
       != g_current_node_state->partitions_owned_map.end()) // check if storing partition already
   {
-    std::cout << "reject can receive request from " << sender << " due to already owned" << std::endl;
+    std::cout << "reject can receive request " << partition_id << " from " << sender << " due to already owned" << std::endl;
     ret.can_recv = false;
     g_current_node_state->partitions_owned_map_lock.releaseRDLock(); // 1
     return ret;
@@ -265,7 +246,7 @@ CanReceiveResult Server::handleCanReceiveRequest(node_t sender, transaction_t ti
     g_current_node_state->partitions_owned_map_lock.releaseRDLock(); // 1
   }
 
-  std::cout << "accept can receive request from " << sender << std::endl;
+  std::cout << "accept can receive request " << partition_id << " from " << sender << std::endl;
   ret.can_recv = true;
   return ret;
 }
@@ -274,21 +255,19 @@ bool Server::handleCommitReceiveRequest(node_t sender, transaction_t tid, partit
 {
   assert (g_current_node_id != sender);
 
-
-
   size_t used = ComputeNodeUtilization(); // TODO what if we over commit?
   size_t free_space = g_local_disk_limit_in_bytes - used;
   float util = used / (float) g_local_disk_limit_in_bytes;
   if (util > kMaximumUtilizationToAcceptDonation || free_space < kMinBytesFreeToAcceptDonation) 
   {
-    std::cout << "reject commit receive request from " << sender << " due to utilization" << std::endl;
+    std::cout << "reject commit receive request " << partition_id << " from " << sender << " due to utilization" << std::endl;
     return false;
   }
 
   g_current_node_state->state_lock.acquireRDLock(); // 1
   if (g_current_node_state->state != NodeState::STABLE) // can only accept if stable
   {
-    std::cout << "reject commit receive request from " << sender << " due to node state" << std::endl;
+    std::cout << "reject commit receive request " << partition_id << " from " << sender << " due to node state" << std::endl;
     g_current_node_state->state_lock.releaseRDLock(); // 1
     return false;
   }
@@ -305,7 +284,7 @@ bool Server::handleCommitReceiveRequest(node_t sender, transaction_t tid, partit
     }
     else // already own or receiving the partition from another source
     {
-      std::cout << "reject commit receive request from " << sender << " due to already owned" << std::endl;
+      std::cout << "reject commit receive request " << partition_id << " from " << sender << " due to already owned" << std::endl;
       g_current_node_state->partitions_owned_map_lock.releaseWRLock(); // 2
       g_current_node_state->state_lock.releaseRDLock(); // 1
       return false;
@@ -323,7 +302,7 @@ bool Server::handleCommitReceiveRequest(node_t sender, transaction_t tid, partit
   g_current_node_state->partitions_owned_map_lock.releaseWRLock(); // 2
   g_current_node_state->state_lock.releaseRDLock(); // 1
 
-  std::cout << "accept commit receive request from " << sender << std::endl;
+  std::cout << "accept commit receive request " << partition_id << " from " << sender << std::endl;
 
   // update cached partition to node mapping
   g_cached_partition_table->lock.acquireWRLock();
@@ -337,14 +316,13 @@ bool Server::handleCommitAsStableRequest(node_t sender, transaction_t tid, parti
   assert (g_current_node_id != sender);
   g_current_node_state->partitions_owned_map_lock.acquireWRLock(); // 1
   // Cannot commit as stable
-  if (g_current_node_state->partitions_owned_map.find(partition_id) == g_current_node_state->partitions_owned_map.end() ||
-      (g_current_node_state->partitions_owned_map[partition_id].state != PartitionState::RECEIVED
-          && g_current_node_state->partitions_owned_map[partition_id].state != PartitionState::STABLE)) 
+  if (g_current_node_state->partitions_owned_map.find(partition_id) == g_current_node_state->partitions_owned_map.end())
   {
+    std::cout << "duplicate commit as stable request " << partition_id << " from " << sender << std::endl;
     g_current_node_state->partitions_owned_map_lock.releaseWRLock(); // 1
-    return false;
+    return true;
   }
-
+  std::cout << "accept commit as stable request " << partition_id << " from " << sender << std::endl;
   g_current_node_state->partitions_owned_map[partition_id].state = PartitionState::STABLE;
   g_current_node_state->savePartitionState(g_owned_partition_state_filename);
   g_current_node_state->partitions_owned_map_lock.releaseWRLock(); // 1

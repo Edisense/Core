@@ -27,6 +27,7 @@ void NodeStateMachine::saveNodeState(std::string &filename)
 	std::string tmp_file = filename + ".tmp";
 	std::ofstream ofs;
   	ofs.open(tmp_file);
+  	assert(!ofs.fail());
 
   	switch (state)
   	{
@@ -85,6 +86,7 @@ void NodeStateMachine::savePartitionState(std::string &filename)
 	std::string tmp_file = filename + ".tmp";
 	std::ofstream ofs;
   	ofs.open(tmp_file, std::ofstream::out | std::ofstream::trunc);
+  	assert(!ofs.fail());
   	for (auto &kv : partitions_owned_map)
   	{
   		PartitionMetadata pm = kv.second;
@@ -172,6 +174,7 @@ void NodeStateMachine::saveClusterMemberList(std::string &filename)
 	std::string tmp_file = filename + ".tmp";
 	std::ofstream ofs;
   	ofs.open(tmp_file, std::ofstream::out | std::ofstream::trunc);
+  	assert(!ofs.fail());
   	for (auto kv : cluster_members)
   	{
   		ofs << kv.second << std::endl;
@@ -202,6 +205,7 @@ void NodeStateMachine::loadClusterMemberList(std::string &filename)
 			exit(1);
 		}
 		node_map[node_id] = hostname;
+		std::cout << hostname << " : " << node_id << std::endl;
 	}
 	ifs.close();
 	cluster_members = node_map;
